@@ -50,11 +50,11 @@ export const register = async (req: Request, res: Response) => {
     });
 
     // 生成JWT令牌
-    const jwtSecret = process.env.JWT_SECRET!;
+    const jwtSecret = process.env.JWT_SECRET || 'fallback-secret';
     const token = jwt.sign(
       { userId: user.id, email: user.email },
       jwtSecret,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+      { expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as any }
     );
 
     res.status(201).json({
@@ -101,11 +101,11 @@ export const login = async (req: Request, res: Response) => {
     }
 
     // 生成JWT令牌
-    const jwtSecret = process.env.JWT_SECRET!;
+    const jwtSecret = process.env.JWT_SECRET || 'fallback-secret';
     const token = jwt.sign(
       { userId: user.id, email: user.email },
       jwtSecret,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+      { expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as any }
     );
 
     res.json({
