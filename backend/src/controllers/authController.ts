@@ -163,3 +163,172 @@ export const getCurrentUser = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// 更新用户名
+export const updateUsername = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId!;
+    const { username } = req.body;
+
+    if (!username || username.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: '用户名至少需要6个字符'
+      });
+    }
+
+    // 检查用户名是否已被其他用户使用
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        username,
+        NOT: { id: userId }
+      }
+    });
+
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: '用户名已被使用'
+      });
+    }
+
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { username },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    });
+
+    res.json({
+      success: true,
+      message: '用户名更新成功',
+      data: user
+    });
+  } catch (error: any) {
+    console.error('更新用户名错误:', error);
+    res.status(500).json({
+      success: false,
+      message: '更新用户名失败'
+    });
+  }
+};
+
+// 更新邮箱
+export const updateEmail = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId!;
+    const { email } = req.body;
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({
+        success: false,
+        message: '邮箱格式无效'
+      });
+    }
+
+    // 检查邮箱是否已被其他用户使用
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        email,
+        NOT: { id: userId }
+      }
+    });
+
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: '邮箱已被使用'
+      });
+    }
+
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { email },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    });
+
+    res.json({
+      success: true,
+      message: '邮箱更新成功',
+      data: user
+    });
+  } catch (error: any) {
+    console.error('更新邮箱错误:', error);
+    res.status(500).json({
+      success: false,
+      message: '更新邮箱失败'
+    });
+  }
+};
+
+// 更新密码
+export const updatePassword = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId!;
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: '请提供当前密码和新密码'
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: '新密码至少需要6个字符'
+      });
+    }
+
+    // 获取用户并验证当前密码
+    const user = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: '用户不存在'
+      });
+    }
+
+    const isValidPassword = await bcrypt.compare(currentPassword, user.password);
+    if (!isValidPassword) {
+      return res.status(401).json({
+        success: false,
+        message: '当前密码错误'
+      });
+    }
+
+    // 加密新密码
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword }
+    });
+
+    res.json({
+      success: true,
+      message: '密码更新成功'
+    });
+  } catch (error: any) {
+    console.error('更新密码错误:', error);
+    res.status(500).json({
+      success: false,
+      message: '更新密码失败'
+    });
+  }
+};
+

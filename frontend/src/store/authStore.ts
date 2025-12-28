@@ -17,6 +17,7 @@ interface AuthState {
   register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   checkAuth: () => Promise<void>;
+  setUser: (user: User) => void;
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
@@ -142,6 +143,10 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: false,
           });
         }
+      },
+
+      setUser: (user: User) => {
+        set({ user });
       },
     }),
     {

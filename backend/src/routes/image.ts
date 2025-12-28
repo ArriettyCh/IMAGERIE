@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authenticateToken } from '../middleware/auth.js';
-import { uploadImage, getImages, getImage, deleteImage, updateImageTags } from '../controllers/imageController.js';
+import { uploadImage, getImages, getImage, deleteImage, updateImageTags, searchImagesByAI } from '../controllers/imageController.js';
+import { reverseGeocode, diagnoseAmapAPI } from '../controllers/geocodingController.js';
 import { upload } from '../middleware/upload.js';
 
 export const imageRouter = Router();
@@ -13,6 +14,15 @@ imageRouter.post('/upload', upload.single('image'), uploadImage);
 
 // 获取图片列表
 imageRouter.get('/', getImages);
+
+// MCP接口：AI对话式检索图片
+imageRouter.post('/search/ai', searchImagesByAI);
+
+// 地理编码（逆地理编码）- 必须在 /:id 之前
+imageRouter.get('/geocode/reverse', reverseGeocode);
+
+// 诊断高德地图API连接（用于排查问题）
+imageRouter.get('/geocode/diagnose', diagnoseAmapAPI);
 
 // 更新图片标签
 imageRouter.patch('/:id/tags', updateImageTags);

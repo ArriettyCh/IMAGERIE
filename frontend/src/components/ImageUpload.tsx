@@ -52,7 +52,8 @@ export default function ImageUpload({ onUploadSuccess }: ImageUploadProps) {
         fileInputRef.current.value = '';
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || '上传失败，请重试');
+      const serverMsg = err.response?.data?.message;
+      setError(serverMsg && serverMsg.length <= 60 ? serverMsg : '上传失败，请稍后重试');
     } finally {
       setUploading(false);
     }

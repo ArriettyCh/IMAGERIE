@@ -1,6 +1,7 @@
 import { useState, FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
+import PasswordInput from '../components/PasswordInput';
 import './Auth.css';
 
 export default function Register() {
@@ -76,31 +77,25 @@ export default function Register() {
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="password">密码</label>
-            <input
-              type="password"
-              id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              placeholder="请输入密码（至少6个字符）"
-              minLength={6}
-            />
-          </div>
+          <PasswordInput
+            id="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            placeholder="请输入密码（至少6个字符）"
+            minLength={6}
+            label="密码"
+          />
 
-          <div className="form-group">
-            <label htmlFor="confirmPassword">确认密码</label>
-            <input
-              type="password"
-              id="confirmPassword"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              placeholder="请再次输入密码"
-              minLength={6}
-            />
-          </div>
+          <PasswordInput
+            id="confirmPassword"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            placeholder="请再次输入密码"
+            minLength={6}
+            label="确认密码"
+          />
 
           {error && <div className="error-message">{error}</div>}
 

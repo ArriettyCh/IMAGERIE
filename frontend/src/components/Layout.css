@@ -34,6 +34,26 @@
 .username {
   font-size: 14px;
   opacity: 0.9;
+  transition: opacity 0.3s;
+  }
+  
+  .username:hover {
+    opacity: 1;
+  }
+  
+  .profile-button {
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.3s;
+  }
+  
+  .profile-button:hover {
+    background: rgba(255, 255, 255, 0.3);
 }
 
 .logout-button {

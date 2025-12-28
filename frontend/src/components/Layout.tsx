@@ -16,13 +16,24 @@ export default function Layout({ children }: LayoutProps) {
     navigate('/login');
   };
 
+  const handleProfileClick = () => {
+    navigate('/profile');
+  };
+
   return (
     <div className="layout">
       <header className="header">
         <div className="header-content">
-          <h1 className="logo">图片管理</h1>
+          <h1 className="logo" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
+            图片管理
+          </h1>
           <div className="header-right">
-            <span className="username">{user?.username}</span>
+            <span className="username" onClick={handleProfileClick} style={{ cursor: 'pointer' }}>
+              {user?.username}
+            </span>
+            <button onClick={handleProfileClick} className="profile-button">
+              用户中心
+            </button>
             <button onClick={handleLogout} className="logout-button">
               退出登录
             </button>

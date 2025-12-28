@@ -4,6 +4,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Home from './pages/Home';
 import ImageDetail from './pages/ImageDetail';
+import Profile from './pages/Profile';
 import Layout from './components/Layout';
 
 function App() {
@@ -31,6 +32,18 @@ function App() {
           isAuthenticated ? (
             <Layout>
               <ImageDetail />
+            </Layout>
+          ) : (
+            <Navigate to="/login" />
+          )
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          isAuthenticated ? (
+            <Layout>
+              <Profile />
             </Layout>
           ) : (
             <Navigate to="/login" />

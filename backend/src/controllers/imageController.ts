@@ -5,6 +5,7 @@ import path from 'path';
 import fs from 'fs';
 import sharp from 'sharp';
 import exifr from 'exifr';
+import { analyzeImageWithAI, searchImagesWithAI } from '../utils/aiService.js';
 
 // 上传图片
 export const uploadImage = async (req: AuthRequest, res: Response) => {
@@ -49,8 +50,8 @@ export const uploadImage = async (req: AuthRequest, res: Response) => {
     } catch (error) {
       console.error('缩略图生成失败:', error);
     }
-
-    // 保存到数据库
+   
+    // 1. 立即创建数据库记录
     const image = await prisma.image.create({
       data: {
         userId,
@@ -72,9 +73,23 @@ export const uploadImage = async (req: AuthRequest, res: Response) => {
       }
     });
 
+    // 2. 异步触发 AI 分析（不使用 await，直接在后台运行）
+    analyzeImageWithAI(file.path)
+      .then(async (aiTags) => {
+        if (aiTags) {
+          console.log(`后台分析成功: 图片ID ${image.id}`);
+          await prisma.image.update({
+            where: { id: image.id },
+            data: { aiTags: JSON.parse(JSON.stringify(aiTags)) }
+          });
+        }
+      })
+      .catch(err => console.error(`后台分析异常: ${image.id}`, err.message));
+
+    // 3. 瞬间返回结果
     res.status(201).json({
       success: true,
-      message: '图片上传成功',
+      message: '图片上传成功，AI分析正在后台进行',
       data: image
     });
   } catch (error: any) {
@@ -92,11 +107,21 @@ export const getImages = async (req: AuthRequest, res: Response) => {
     const userId = req.userId!;
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
+    const search = req.query.search as string;
     const skip = (page - 1) * limit;
+
+    // 构建查询条件
+    const where: any = { userId };
+    if (search) {
+      where.OR = [
+        { originalName: { contains: search } },
+        { customTags: { contains: search } }
+      ];
+    }
 
     const [images, total] = await Promise.all([
       prisma.image.findMany({
-        where: { userId },
+        where,
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
@@ -109,12 +134,13 @@ export const getImages = async (req: AuthRequest, res: Response) => {
           width: true,
           height: true,
           exifData: true,
+          aiTags: true,
           customTags: true,
           createdAt: true,
           updatedAt: true,
         }
       }),
-      prisma.image.count({ where: { userId } })
+      prisma.image.count({ where })
     ]);
 
     res.json({
@@ -262,6 +288,62 @@ export const updateImageTags = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       message: '更新标签失败'
+    });
+  }
+};
+
+// MCP接口：通过AI对话方式检索图片
+export const searchImagesByAI = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId!;
+    const { query } = req.body;
+
+    if (!query || typeof query !== 'string' || query.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: '请提供查询内容'
+      });
+    }
+
+    // 获取用户的所有图片（包含标签信息）
+    const allImages = await prisma.image.findMany({
+      where: { userId },
+      select: {
+        id: true,
+        filename: true,
+        originalName: true,
+        customTags: true,
+        aiTags: true,
+        exifData: true,
+        width: true,
+        height: true,
+        mimeType: true,
+        size: true,
+        createdAt: true,
+      }
+    });
+
+    // 使用AI进行智能检索（需要传入上传目录路径）
+    const uploadDir = process.env.UPLOAD_DIR || './uploads';
+    const matchedImageIds = await searchImagesWithAI(query, allImages, uploadDir);
+
+    // 根据匹配的ID获取图片详情
+    const matchedImages = allImages.filter(img => matchedImageIds.includes(img.id));
+
+    res.json({
+      success: true,
+      message: '检索成功',
+      data: {
+        images: matchedImages,
+        query: query,
+        count: matchedImages.length
+      }
+    });
+  } catch (error: any) {
+    console.error('AI检索错误:', error);
+    res.status(500).json({
+      success: false,
+      message: 'AI检索失败：' + error.message
     });
   }
 };

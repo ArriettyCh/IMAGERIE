@@ -38,7 +38,25 @@ cp .env.example .env
 ```env
 DATABASE_URL="mysql://你的用户名:你的密码@localhost:3306/image_manager?schema=public"
 JWT_SECRET="请修改为一个随机字符串"
+
+# 地理编码API配置（可选，但强烈推荐配置以获得更准确的中国地区定位）
+# 高德地图API密钥（推荐）：https://console.amap.com/dev/key/app
+# 重要：必须申请"Web服务"类型的API密钥（不是"Web端(JS API)"）
+AMAP_API_KEY="你的高德地图API密钥"
+
+# 或使用百度地图API密钥（备用）：https://lbsyun.baidu.com/apiconsole/key
+# BAIDU_API_KEY="你的百度地图API密钥"
 ```
+
+**注意**：
+- 如果不配置API密钥，系统仍可使用Nominatim服务，但中国地区的定位精度可能较低。
+- 配置高德或百度地图API密钥后，系统会自动进行坐标转换（WGS-84转GCJ-02），大幅提升中国地区的定位准确性。
+- **高德地图Web服务API不需要安全密钥**：Web服务API只需要配置 `AMAP_API_KEY` 即可，不需要配置安全密钥（安全密钥仅用于JS API）。
+- **如果遇到 `fetch failed` 或网络连接错误**：
+  1. **检查API密钥类型**：必须申请 **"Web服务"** 类型的API密钥（不是"Web端(JS API)"）。在高德开放平台控制台，确保你的key类型是"Web服务"。
+  2. **检查IP白名单**：如果配置了IP白名单，需要将服务器IP添加到白名单中。开发环境可以暂时不配置白名单。
+  3. **检查网络连接**：确保服务器能够访问 `restapi.amap.com`。
+  4. **检查Node.js版本**：确保Node.js版本 >= 18.0.0（fetch API需要）。
 
 #### 方式二：使用Docker（推荐）
 
@@ -263,7 +281,25 @@ cp .env.example .env
 ```env
 DATABASE_URL="mysql://用户名:密码@localhost:3306/image_manager?schema=public"
 JWT_SECRET="your-secret-key-change-this-in-production"
+
+# 地理编码API配置（可选，但强烈推荐配置以获得更准确的中国地区定位）
+# 高德地图API密钥（推荐）：https://console.amap.com/dev/key/app
+# 重要：必须申请"Web服务"类型的API密钥（不是"Web端(JS API)"）
+AMAP_API_KEY="你的高德地图API密钥"
+
+# 或使用百度地图API密钥（备用）：https://lbsyun.baidu.com/apiconsole/key
+# BAIDU_API_KEY="你的百度地图API密钥"
 ```
+
+**注意**：
+- 如果不配置API密钥，系统仍可使用Nominatim服务，但中国地区的定位精度可能较低。
+- 配置高德或百度地图API密钥后，系统会自动进行坐标转换（WGS-84转GCJ-02），大幅提升中国地区的定位准确性。
+- **高德地图Web服务API不需要安全密钥**：Web服务API只需要配置 `AMAP_API_KEY` 即可，不需要配置安全密钥（安全密钥仅用于JS API）。
+- **如果遇到 `fetch failed` 或网络连接错误**：
+  1. **检查API密钥类型**：必须申请 **"Web服务"** 类型的API密钥（不是"Web端(JS API)"）。在高德开放平台控制台，确保你的key类型是"Web服务"。
+  2. **检查IP白名单**：如果配置了IP白名单，需要将服务器IP添加到白名单中。开发环境可以暂时不配置白名单。
+  3. **检查网络连接**：确保服务器能够访问 `restapi.amap.com`。
+  4. **检查Node.js版本**：确保Node.js版本 >= 18.0.0（fetch API需要）。
 
 **方式二：使用Docker Compose（推荐）**
 

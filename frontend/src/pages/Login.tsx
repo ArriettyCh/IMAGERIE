@@ -1,6 +1,7 @@
 import { useState, FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
+import PasswordInput from '../components/PasswordInput';
 import './Auth.css';
 
 export default function Login() {
@@ -43,18 +44,15 @@ export default function Login() {
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="password">密码</label>
-            <input
-              type="password"
-              id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              placeholder="请输入密码（至少6个字符）"
-              minLength={6}
-            />
-          </div>
+          <PasswordInput
+            id="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            placeholder="请输入密码（至少6个字符）"
+            minLength={6}
+            label="密码"
+          />
 
           {error && <div className="error-message">{error}</div>}
 
