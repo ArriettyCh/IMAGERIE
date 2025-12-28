@@ -22,3 +22,5 @@
    ```
 
 3. 打开浏览器，访问 `http://localhost:8080`
+
+4. 登录测试用户或创建新用户，已存在的测试用户名为 `test_user_1@gmail.com`，密码为 `test_user_1`
