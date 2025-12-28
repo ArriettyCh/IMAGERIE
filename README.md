@@ -12,7 +12,7 @@
 
 1. **克隆仓库**
    ```bash
-   git clone https://github.com/your-repo/ZJU-25-BS.git
+   git clone https://github.com/arriettych/ZJU-25-BS.git
    cd ZJU-25-BS
    ```
 
@@ -20,3 +20,5 @@
    ```bash
    docker-compose up -d
    ```
+
+3. 打开浏览器，访问 `http://localhost:8080`
