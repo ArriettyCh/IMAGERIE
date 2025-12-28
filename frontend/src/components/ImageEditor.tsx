@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
-import './ImageEditor.css';
+import { useUIStore } from '../store/uiStore';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, RotateCcw, Sun, Contrast, Droplets, Scissors, Layers, Loader2, Save } from 'lucide-react';
 
 interface ImageEditorProps {
   imageUrl: string;
@@ -11,22 +13,25 @@ interface ImageEditorProps {
   onSave: () => void;
 }
 
+const API_BASE = 'http://localhost:3001';
+
 export default function ImageEditor({ imageUrl, imageId, mode, onClose, onSave }: ImageEditorProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [adjustments, setAdjustments] = useState({
     brightness: 100,
     contrast: 100,
     saturation: 100,
   });
 
-  // 裁剪相关状态 - 使用显示坐标（CSS像素）
   const [isCropping, setIsCropping] = useState(false);
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
   const [cropBox, setCropBox] = useState({ x: 0, y: 0, width: 0, height: 0 });
   const { token } = useAuthStore();
+  const { addToast } = useUIStore();
 
   useEffect(() => {
     const img = new Image();
@@ -36,7 +41,7 @@ export default function ImageEditor({ imageUrl, imageId, mode, onClose, onSave }
       setImageLoaded(true);
       initCanvas();
     };
-    img.src = imageUrl;
+    img.src = imageUrl + '?t=' + Date.now();
   }, [imageUrl]);
 
   const initCanvas = () => {
@@ -44,6 +49,8 @@ export default function ImageEditor({ imageUrl, imageId, mode, onClose, onSave }
     const canvas = canvasRef.current;
     canvas.width = imageRef.current.width;
     canvas.height = imageRef.current.height;
+    setAdjustments({ brightness: 100, contrast: 100, saturation: 100 });
+    setCropBox({ x: 0, y: 0, width: 0, height: 0 });
     drawImage();
   };
 
@@ -54,64 +61,37 @@ export default function ImageEditor({ imageUrl, imageId, mode, onClose, onSave }
     if (!ctx) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
     if (mode === 'adjust') {
-      // 调色模式：直接在主绘制流程中应用滤镜
       ctx.filter = `brightness(${adjustments.brightness}%) contrast(${adjustments.contrast}%) saturate(${adjustments.saturation}%)`;
     } else {
       ctx.filter = 'none';
     }
-
     ctx.drawImage(imageRef.current, 0, 0);
   };
 
   useEffect(() => {
-    if (imageLoaded) {
-      drawImage();
-    }
+    if (imageLoaded) drawImage();
   }, [imageLoaded, adjustments, mode]);
 
-  // 坐标转换：屏幕 -> Canvas内部像素
-  const screenToCanvas = (screenX: number, screenY: number) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return { x: 0, y: 0 };
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    return {
-      x: (screenX - rect.left) * scaleX,
-      y: (screenY - rect.top) * scaleY
-    };
-  };
-
-  // 坐标转换：屏幕 -> 容器相对坐标（用于显示裁剪框）
   const screenToContainer = (screenX: number, screenY: number) => {
     const container = containerRef.current;
     if (!container) return { x: 0, y: 0 };
     const rect = container.getBoundingClientRect();
-    return {
-      x: screenX - rect.left,
-      y: screenY - rect.top
-    };
+    return { x: screenX - rect.left, y: screenY - rect.top };
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (mode !== 'crop') return;
     const { x, y } = screenToContainer(e.clientX, e.clientY);
-
-    // 检查是否在图片范围内
     const canvas = canvasRef.current;
     if (!canvas) return;
     const cRect = canvas.getBoundingClientRect();
-    const container = containerRef.current!;
-    const contRect = container.getBoundingClientRect();
+    const contRect = containerRef.current!.getBoundingClientRect();
 
     const imageLeft = cRect.left - contRect.left;
     const imageTop = cRect.top - contRect.top;
 
-    if (x < imageLeft || x > imageLeft + cRect.width || y < imageTop || y > imageTop + cRect.height) {
-      return;
-    }
+    if (x < imageLeft || x > imageLeft + cRect.width || y < imageTop || y > imageTop + cRect.height) return;
 
     setIsCropping(true);
     setStartPos({ x, y });
@@ -121,15 +101,12 @@ export default function ImageEditor({ imageUrl, imageId, mode, onClose, onSave }
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isCropping || mode !== 'crop') return;
     const { x, y } = screenToContainer(e.clientX, e.clientY);
-
     const canvas = canvasRef.current!;
     const cRect = canvas.getBoundingClientRect();
-    const container = containerRef.current!;
-    const contRect = container.getBoundingClientRect();
+    const contRect = containerRef.current!.getBoundingClientRect();
     const imageLeft = cRect.left - contRect.left;
     const imageTop = cRect.top - contRect.top;
 
-    // 限制在图片范围内
     const currentX = Math.max(imageLeft, Math.min(imageLeft + cRect.width, x));
     const currentY = Math.max(imageTop, Math.min(imageTop + cRect.height, y));
 
@@ -141,9 +118,7 @@ export default function ImageEditor({ imageUrl, imageId, mode, onClose, onSave }
     });
   };
 
-  const handleMouseUp = () => {
-    setIsCropping(false);
-  };
+  const handleMouseUp = () => setIsCropping(false);
 
   useEffect(() => {
     if (isCropping) {
@@ -152,145 +127,208 @@ export default function ImageEditor({ imageUrl, imageId, mode, onClose, onSave }
     }
   }, [isCropping]);
 
-  const applyCrop = () => {
-    if (cropBox.width < 5 || cropBox.height < 5) {
-      alert('请选择一个有效的裁剪区域');
-      return;
-    }
-
+  const applyCropInternal = () => {
+    if (cropBox.width < 5 || cropBox.height < 5) return false;
     const canvas = canvasRef.current!;
     const cRect = canvas.getBoundingClientRect();
-    const container = containerRef.current!;
-    const contRect = container.getBoundingClientRect();
-    const imageLeft = cRect.left - contRect.left;
-    const imageTop = cRect.top - contRect.top;
-
-    // 转换为Canvas内部坐标
     const scaleX = canvas.width / cRect.width;
     const scaleY = canvas.height / cRect.height;
+    const contRect = containerRef.current!.getBoundingClientRect();
+    const imageLeft = cRect.left - contRect.left;
+    const imageTop = cRect.top - contRect.top;
 
     const sourceX = (cropBox.x - imageLeft) * scaleX;
     const sourceY = (cropBox.y - imageTop) * scaleY;
     const sourceW = cropBox.width * scaleX;
     const sourceH = cropBox.height * scaleY;
 
-    // 创建临时canvas执行裁剪
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = sourceW;
     tempCanvas.height = sourceH;
-    const tempCtx = tempCanvas.getContext('2d')!;
-    tempCtx.drawImage(canvas, sourceX, sourceY, sourceW, sourceH, 0, 0, sourceW, sourceH);
+    tempCanvas.getContext('2d')!.drawImage(canvas, sourceX, sourceY, sourceW, sourceH, 0, 0, sourceW, sourceH);
 
-    // 更新主Canvas
     canvas.width = sourceW;
     canvas.height = sourceH;
-    const ctx = canvas.getContext('2d')!;
-    ctx.drawImage(tempCanvas, 0, 0);
-
+    canvas.getContext('2d')!.drawImage(tempCanvas, 0, 0);
     setCropBox({ x: 0, y: 0, width: 0, height: 0 });
+    return true;
   };
 
   const handleSave = async () => {
     if (!canvasRef.current) return;
 
-    // 这里如果只是前端演示，我们可以直接导出
-    const dataUrl = canvasRef.current.toDataURL('image/jpeg', 0.9);
+    // 如果在裁剪模式下且有选区，先应用裁剪
+    if (mode === 'crop' && cropBox.width > 0) {
+      applyCropInternal();
+    }
 
-    // 实际作业中，我们应该发送到后端
-    // const blob = await (await fetch(dataUrl)).blob();
-    // const formData = new FormData();
-    // formData.append('image', blob, 'edited.jpg');
-    // await axios.post(`/api/images/${imageId}/edit`, formData, ...);
+    setIsSaving(true);
+    try {
+      const dataUrl = canvasRef.current.toDataURL('image/jpeg', 0.9);
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
 
-    alert('编辑已应用！在实际系统中，这里将调用后端API更新原图。');
-    onSave();
+      const formData = new FormData();
+      formData.append('image', blob, 'edited.jpg');
+
+      await axios.post(`${API_BASE}/api/images/${imageId}/edit`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      addToast('作品集已成功更新');
+      onSave();
+    } catch (err) {
+      addToast('同步编辑失败，请检查连接', 'error');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
-    <div className="image-editor-overlay">
-      <div className="image-editor">
-        <div className="editor-header">
-          <h3>{mode === 'crop' ? '图片裁剪' : '图片调色'}</h3>
-          <p className="editor-tip">
-            {mode === 'crop' ? '在图片上点击并拖动以选择区域' : '调整滑块以改变图片效果'}
-          </p>
-          <button className="editor-close" onClick={onClose}>×</button>
-        </div>
-
-        <div className="editor-content">
-          <div
-            className="canvas-container"
-            ref={containerRef}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[100] bg-black flex flex-col md:flex-row"
+    >
+      <div className="absolute top-0 left-0 right-0 h-16 px-6 flex justify-between items-center z-50 pointer-events-none">
+        <button
+          onClick={onClose}
+          className="p-2 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-white transition-colors pointer-events-auto"
+        >
+          <X className="w-6 h-6" />
+        </button>
+        <div className="flex gap-4 pointer-events-auto">
+          <button
+            onClick={initCanvas}
+            className="p-2 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-white transition-colors"
+            title="重置修改"
           >
-            <canvas
-              ref={canvasRef}
-              style={{
-                maxWidth: '100%',
-                maxHeight: '60vh',
-                cursor: mode === 'crop' ? 'crosshair' : 'default',
-                userSelect: 'none'
-              }}
-            />
-            {mode === 'crop' && cropBox.width > 0 && (
-              <div
-                className="crop-selection-box"
-                style={{
-                  left: cropBox.x,
-                  top: cropBox.y,
-                  width: cropBox.width,
-                  height: cropBox.height
-                }}
-              />
-            )}
-          </div>
-
-          {mode === 'adjust' && (
-            <div className="adjust-controls">
-              <div className="control-item">
-                <label>亮度</label>
-                <input
-                  type="range" min="0" max="200" value={adjustments.brightness}
-                  onChange={(e) => setAdjustments({ ...adjustments, brightness: parseInt(e.target.value) })}
-                />
-                <span>{adjustments.brightness}%</span>
-              </div>
-              <div className="control-item">
-                <label>对比度</label>
-                <input
-                  type="range" min="0" max="200" value={adjustments.contrast}
-                  onChange={(e) => setAdjustments({ ...adjustments, contrast: parseInt(e.target.value) })}
-                />
-                <span>{adjustments.contrast}%</span>
-              </div>
-              <div className="control-item">
-                <label>饱和度</label>
-                <input
-                  type="range" min="0" max="200" value={adjustments.saturation}
-                  onChange={(e) => setAdjustments({ ...adjustments, saturation: parseInt(e.target.value) })}
-                />
-                <span>{adjustments.saturation}%</span>
-              </div>
-              <button className="reset-button" onClick={() => setAdjustments({ brightness: 100, contrast: 100, saturation: 100 })}>
-                重置效果
-              </button>
-            </div>
-          )}
-
-          {mode === 'crop' && (
-            <div className="crop-controls">
-              <button className="crop-button" onClick={applyCrop}>应用裁剪区域</button>
-              <button className="reset-button" onClick={initCanvas}>撤销裁剪</button>
-            </div>
-          )}
-        </div>
-
-        <div className="editor-footer">
-          <button className="editor-button cancel" onClick={onClose}>取消</button>
-          <button className="editor-button save" onClick={handleSave}>完成并保存</button>
+            <RotateCcw className="w-5 h-5" />
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="px-8 py-2 bg-white text-black rounded-full text-xs tracking-widest uppercase font-medium hover:bg-white/90 transition-all flex items-center gap-2 disabled:opacity-50"
+          >
+            {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            <span>{isSaving ? '正在同步' : '完成并保存'}</span>
+          </button>
         </div>
       </div>
+
+      <div className="flex-1 flex items-center justify-center p-8 md:p-16">
+        <div
+          ref={containerRef}
+          className="relative max-w-full max-h-full"
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+        >
+          {!imageLoaded && <div className="text-white/20 font-light tracking-widest animate-pulse">载入艺术画布中...</div>}
+          <canvas
+            ref={canvasRef}
+            className={`max-w-full max-h-[80vh] shadow-2xl transition-all duration-500 ${mode === 'crop' ? 'cursor-crosshair' : 'cursor-default'}`}
+            style={{ display: imageLoaded ? 'block' : 'none' }}
+          />
+          {mode === 'crop' && cropBox.width > 0 && (
+            <div
+              className="absolute border-2 border-white border-dashed ring-[2000px] ring-black/70 pointer-events-none"
+              style={{
+                left: cropBox.x,
+                top: cropBox.y,
+                width: cropBox.width,
+                height: cropBox.height
+              }}
+            >
+              {/* Corner Indicators */}
+              <div className="absolute top-0 left-0 w-2 h-2 bg-white -translate-x-1/2 -translate-y-1/2" />
+              <div className="absolute top-0 right-0 w-2 h-2 bg-white translate-x-1/2 -translate-y-1/2" />
+              <div className="absolute bottom-0 left-0 w-2 h-2 bg-white -translate-x-1/2 translate-y-1/2" />
+              <div className="absolute bottom-0 right-0 w-2 h-2 bg-white translate-x-1/2 translate-y-1/2" />
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="w-full md:w-80 bg-zinc-950 border-t md:border-t-0 md:border-l border-white/5 p-8 flex flex-col gap-12 overflow-y-auto">
+        <div className="space-y-2">
+          <h2 className="text-white text-lg font-serif">{mode === 'crop' ? '重构构图' : '色彩实验室'}</h2>
+          <p className="text-white/40 text-[10px] tracking-widest uppercase">
+            {mode === 'crop' ? '直接拖动选区，随后点击保存即可' : '精细调整每一个光影维度'}
+          </p>
+        </div>
+
+        {mode === 'adjust' ? (
+          <div className="space-y-8">
+            <ControlSlider
+              icon={Sun}
+              label="曝光度"
+              value={adjustments.brightness}
+              min={0} max={200}
+              onChange={(val: number) => setAdjustments({ ...adjustments, brightness: val })}
+            />
+            <ControlSlider
+              icon={Contrast}
+              label="对比度"
+              value={adjustments.contrast}
+              min={0} max={200}
+              onChange={(val: number) => setAdjustments({ ...adjustments, contrast: val })}
+            />
+            <ControlSlider
+              icon={Droplets}
+              label="色彩饱和度"
+              value={adjustments.saturation}
+              min={0} max={200}
+              onChange={(val: number) => setAdjustments({ ...adjustments, saturation: val })}
+            />
+          </div>
+        ) : (
+          <div className="space-y-6">
+            <div className="p-6 bg-white/5 rounded-2xl border border-white/5 space-y-4">
+              <Scissors className="w-5 h-5 text-white/40" />
+              <p className="text-white/60 text-xs font-light leading-relaxed">
+                在画布上自由拖动以划定新的边界。选定后无需额外操作，点击右上角的“完成并保存”即可应用更改。
+              </p>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-auto pt-8 border-t border-white/5 space-y-4">
+          <div className="flex items-center gap-2 text-white/40">
+            <Layers className="w-4 h-4" />
+            <span className="text-[10px] tracking-widest uppercase font-light">画布实时参数</span>
+          </div>
+          <div className="text-[10px] text-white/20 font-light grid grid-cols-2 gap-2 uppercase tracking-tighter">
+            <span>分辨率</span>
+            <span className="text-right text-white/40">{canvasRef.current?.width} × {canvasRef.current?.height}</span>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+function ControlSlider({ icon: Icon, label, value, min, max, onChange }: any) {
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center text-white/60">
+        <div className="flex items-center gap-3">
+          <Icon className="w-4 h-4" />
+          <span className="text-[11px] tracking-widest uppercase font-light">{label}</span>
+        </div>
+        <span className="text-xs font-light">{value}%</span>
+      </div>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        value={value}
+        onChange={(e) => onChange(parseInt(e.target.value))}
+        className="w-full h-px bg-white/20 appearance-none cursor-pointer accent-white hover:accent-accent transition-colors"
+      />
     </div>
   );
 }

@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
-import './TagModal.css';
+import { useUIStore } from '../store/uiStore';
+import { motion } from 'framer-motion';
+import { X, Tag, Loader2, Save } from 'lucide-react';
 
 interface TagModalProps {
   imageId: number;
@@ -10,10 +12,13 @@ interface TagModalProps {
   onSave: () => void;
 }
 
+const API_BASE = 'http://localhost:3001';
+
 export default function TagModal({ imageId, currentTags, onClose, onSave }: TagModalProps) {
   const [tags, setTags] = useState('');
   const [loading, setLoading] = useState(false);
   const { token } = useAuthStore();
+  const { addToast } = useUIStore();
 
   useEffect(() => {
     setTags(currentTags || '');
@@ -22,47 +27,89 @@ export default function TagModal({ imageId, currentTags, onClose, onSave }: TagM
   const handleSave = async () => {
     try {
       setLoading(true);
+      // Normalize tags: replace Chinese commas and newlines with English commas
+      const normalizedTags = tags
+        .replace(/[\uff0c\n\r]/g, ',')
+        .split(',')
+        .map(t => t.trim())
+        .filter(t => t.length > 0)
+        .join(',');
+
       await axios.patch(
-        `http://localhost:3001/api/images/${imageId}/tags`,
-        { customTags: tags.trim() || null },
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        }
+        `${API_BASE}/api/images/${imageId}/tags`,
+        { customTags: normalizedTags || null },
+        { headers: { 'Authorization': `Bearer ${token}` } }
       );
+      addToast('标签已更新');
       onSave();
     } catch (error: any) {
-      alert('保存标签失败：' + (error.response?.data?.message || '未知错误'));
+      addToast('保存失败，请稍后再试', 'error');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="tag-modal-overlay" onClick={onClose}>
-      <div className="tag-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="tag-modal-header">
-          <h3>设置标签</h3>
-          <button className="tag-modal-close" onClick={onClose}>×</button>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.95, opacity: 0, y: 20 }}
+        className="w-full max-w-md bg-white rounded-[2rem] shadow-2xl overflow-hidden"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="p-8 space-y-8">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-accent/10 rounded-xl text-accent">
+                <Tag className="w-5 h-5" />
+              </div>
+              <h3 className="text-xl font-serif">自定义分类标签</h3>
+            </div>
+            <button onClick={onClose} className="p-2 hover:bg-black/5 rounded-full transition-colors text-secondary">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            <label className="text-[10px] tracking-[0.2em] uppercase font-light text-secondary">分类关键词</label>
+            <textarea
+              autoFocus
+              value={tags}
+              onChange={(e) => setTags(e.target.value)}
+              placeholder="例如：旅行, 建筑, 胶片感... (支持中英文逗号或换行分隔)"
+              rows={4}
+              className="w-full p-5 bg-card border-none rounded-2xl text-sm font-light focus:ring-1 focus:ring-foreground/10 transition-all outline-none resize-none"
+            />
+            <p className="text-[10px] text-secondary font-light italic leading-relaxed">
+              * 使用中/英文逗号或回车键分隔多个标签。
+            </p>
+          </div>
+
+          <div className="flex gap-4">
+            <button
+              onClick={onClose}
+              className="flex-1 py-4 text-xs tracking-widest uppercase font-light text-secondary hover:text-foreground transition-colors"
+            >
+              放弃更改
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={loading}
+              className="flex-1 py-4 bg-foreground text-white rounded-2xl text-xs tracking-widest uppercase font-medium flex items-center justify-center gap-3 hover:bg-foreground/90 transition-all disabled:opacity-50"
+            >
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              <span>更新作品集</span>
+            </button>
+          </div>
         </div>
-        <div className="tag-modal-body">
-          <label>自定义标签（用逗号分隔）</label>
-          <textarea
-            value={tags}
-            onChange={(e) => setTags(e.target.value)}
-            placeholder="例如：风景, 旅行, 2024"
-            rows={4}
-          />
-        </div>
-        <div className="tag-modal-footer">
-          <button className="tag-button-cancel" onClick={onClose}>取消</button>
-          <button className="tag-button-save" onClick={handleSave} disabled={loading}>
-            {loading ? '保存中...' : '保存'}
-          </button>
-        </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
-

@@ -45,7 +45,9 @@ export const uploadImage = async (req: AuthRequest, res: Response) => {
     const thumbnailPath = path.join(path.dirname(file.path), 'thumbnails', file.filename);
     try {
       await sharp(file.path)
-        .resize(300, 300, { fit: 'inside', withoutEnlargement: true })
+        // 原300px效果较糊，提升到600px内短边，保证清晰度
+        // .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 100 })
         .toFile(thumbnailPath);
     } catch (error) {
       console.error('缩略图生成失败:', error);
@@ -348,3 +350,75 @@ export const searchImagesByAI = async (req: AuthRequest, res: Response) => {
   }
 };
 
+
+// 更新图片内容（编辑后保存）
+export const updateImageContent = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId!;
+    const imageId = parseInt(req.params.id);
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({ success: false, message: '未收到图片数据' });
+    }
+
+    const image = await prisma.image.findFirst({
+      where: { id: imageId, userId }
+    });
+
+    if (!image) {
+      return res.status(404).json({ success: false, message: '图片不存在' });
+    }
+
+    // 更新文件：将新上传的临时文件移动/覆盖原文件
+    const uploadDir = process.env.UPLOAD_DIR || './uploads';
+    const oldPath = path.join(uploadDir, image.filename);
+
+    // 生成新的缩略图
+    const thumbnailPath = path.join(uploadDir, 'thumbnails', image.filename);
+
+    // 确保缩略图目录存在
+    const thumbDir = path.dirname(thumbnailPath);
+    if (!fs.existsSync(thumbDir)) {
+      fs.mkdirSync(thumbDir, { recursive: true });
+    }
+
+    await sharp(file.path)
+      .resize(300, 300, { fit: 'inside', withoutEnlargement: true })
+      .toFile(thumbnailPath);
+
+    // 覆盖原图
+    fs.copyFileSync(file.path, oldPath);
+    fs.unlinkSync(file.path); // 删除临时文件
+
+    // 更新尺寸信息
+    const metadata = await sharp(oldPath).metadata();
+    await prisma.image.update({
+      where: { id: imageId },
+      data: {
+        width: metadata.width || null,
+        height: metadata.height || null,
+        size: BigInt(fs.statSync(oldPath).size),
+        updatedAt: new Date()
+      }
+    });
+
+    // 异步重新触发 AI 分析
+    analyzeImageWithAI(oldPath).then(async (aiTags) => {
+      if (aiTags) {
+        await prisma.image.update({
+          where: { id: imageId },
+          data: { aiTags: JSON.parse(JSON.stringify(aiTags)) }
+        });
+      }
+    }).catch(console.error);
+
+    res.json({
+      success: true,
+      message: '图片编辑已成功保存'
+    });
+  } catch (error: any) {
+    console.error('更新图片内容失败:', error);
+    res.status(500).json({ success: false, message: '保存编辑失败' });
+  }
+};

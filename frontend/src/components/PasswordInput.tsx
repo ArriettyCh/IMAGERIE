@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import './PasswordInput.css';
+import { Eye, EyeOff } from 'lucide-react';
 
 interface PasswordInputProps {
   id: string;
@@ -23,9 +23,9 @@ export default function PasswordInput({
   const [showPassword, setShowPassword] = useState(false);
 
   return (
-    <div className="password-input-group">
-      {label && <label htmlFor={id}>{label}</label>}
-      <div className="password-input-wrapper">
+    <div className="space-y-3">
+      {label && <label htmlFor={id} className="text-[10px] tracking-[0.2em] uppercase font-light text-secondary">{label}</label>}
+      <div className="relative group">
         <input
           type={showPassword ? 'text' : 'password'}
           id={id}
@@ -34,18 +34,17 @@ export default function PasswordInput({
           required={required}
           placeholder={placeholder}
           minLength={minLength}
-          className="password-input"
+          className="w-full px-5 py-4 bg-card border-none rounded-2xl text-sm font-light focus:ring-1 focus:ring-foreground/10 transition-all outline-none"
         />
         <button
           type="button"
-          className="password-toggle"
+          className="absolute right-4 top-1/2 -translate-y-1/2 text-secondary hover:text-foreground transition-colors p-2"
           onClick={() => setShowPassword(!showPassword)}
           aria-label={showPassword ? '隐藏密码' : '显示密码'}
         >
-          {showPassword ? '👁️' : '👁️‍🗨️'}
+          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
         </button>
       </div>
     </div>
   );
 }
-

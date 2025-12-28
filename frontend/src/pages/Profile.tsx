@@ -1,22 +1,23 @@
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
+import { useUIStore } from '../store/uiStore';
 import PasswordInput from '../components/PasswordInput';
-import './Profile.css';
+import { motion } from 'framer-motion';
+import { User, ArrowLeft, Loader2, Save, Mail, ShieldCheck, Camera, LogOut } from 'lucide-react';
+
+const API_BASE = 'http://localhost:3001';
 
 export default function Profile() {
   const navigate = useNavigate();
-  const { user, token, setUser } = useAuthStore();
+  const { user, token, setUser, logout } = useAuthStore();
+  const { addToast, showConfirm } = useUIStore();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
-  // 用户信息表单
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
-
-  // 密码修改表单
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -28,225 +29,249 @@ export default function Profile() {
     }
   }, [user]);
 
-  const fetchUserInfo = async () => {
+  const handleUpdate = async (type: 'username' | 'email' | 'password', data: any) => {
+    setLoading(true);
     try {
-      const response = await axios.get('http://localhost:3001/api/auth/me', {
+      const response = await axios.patch(`${API_BASE}/api/auth/${type}`, data, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.data.success) {
+        addToast('账户信息已成功同步');
+        if (type !== 'password') {
+          setUser(response.data.data);
+        } else {
+          setCurrentPassword('');
+          setNewPassword('');
+          setConfirmPassword('');
+        }
+      }
+    } catch (err: any) {
+      addToast(err.response?.data?.message || '同步失败，请重试', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      addToast('请选择有效的图片文件', 'error');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('avatar', file);
+
+    setUploadingAvatar(true);
+    try {
+      const response = await axios.post(`${API_BASE}/api/auth/avatar`, formData, {
         headers: {
+          'Content-Type': 'multipart/form-data',
           'Authorization': `Bearer ${token}`
         }
       });
-
       if (response.data.success) {
         setUser(response.data.data);
-        setUsername(response.data.data.username);
-        setEmail(response.data.data.email);
+        addToast('头像已更新');
       }
-    } catch (error) {
-      console.error('获取用户信息失败:', error);
+    } catch (err: any) {
+      addToast('头像上传失败', 'error');
+    } finally {
+      setUploadingAvatar(false);
     }
   };
 
-  useEffect(() => {
-    fetchUserInfo();
-  }, []);
-
-  const handleUpdateUsername = async (e: FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
-    setLoading(true);
-
-    try {
-      const response = await axios.patch(
-        'http://localhost:3001/api/auth/username',
-        { username },
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        }
-      );
-
-      if (response.data.success) {
-        setSuccess('用户名更新成功');
-        setUser(response.data.data);
-        setTimeout(() => setSuccess(''), 3000);
+  const handleLogout = () => {
+    showConfirm({
+      title: '退出登录',
+      message: '确定要结束当前会话并退出吗？',
+      confirmLabel: '退出',
+      isDestructive: true,
+      onConfirm: () => {
+        logout();
+        navigate('/login');
       }
-    } catch (err: any) {
-      setError(err.response?.data?.message || '更新用户名失败');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleUpdateEmail = async (e: FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
-    setLoading(true);
-
-    try {
-      const response = await axios.patch(
-        'http://localhost:3001/api/auth/email',
-        { email },
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        }
-      );
-
-      if (response.data.success) {
-        setSuccess('邮箱更新成功');
-        setUser(response.data.data);
-        setTimeout(() => setSuccess(''), 3000);
-      }
-    } catch (err: any) {
-      setError(err.response?.data?.message || '更新邮箱失败');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleUpdatePassword = async (e: FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
-
-    if (newPassword.length < 6) {
-      setError('新密码至少需要6个字符');
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      setError('两次输入的密码不一致');
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const response = await axios.patch(
-        'http://localhost:3001/api/auth/password',
-        {
-          currentPassword,
-          newPassword
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        }
-      );
-
-      if (response.data.success) {
-        setSuccess('密码更新成功');
-        setCurrentPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
-        setTimeout(() => setSuccess(''), 3000);
-      }
-    } catch (err: any) {
-      setError(err.response?.data?.message || '更新密码失败');
-    } finally {
-      setLoading(false);
-    }
+    });
   };
 
   return (
-    <div className="profile-container">
-      <div className="profile-header">
-        <h1>用户中心</h1>
-        <button onClick={() => navigate('/')} className="back-button">
-          ← 返回首页
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="max-w-4xl mx-auto space-y-16 py-12"
+    >
+      <div className="flex justify-between items-end border-b border-foreground/5 pb-8">
+        <div className="space-y-2">
+          <h2 className="text-[10px] tracking-[0.3em] font-light text-secondary uppercase">Preference & Security</h2>
+          <h1 className="text-4xl font-serif tracking-tight text-foreground">账户设置</h1>
+        </div>
+        <button onClick={() => navigate('/')} className="flex items-center gap-2 text-secondary hover:text-foreground transition-colors group">
+          <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
+          <span className="text-xs tracking-widest uppercase font-light">返回画廊</span>
         </button>
       </div>
 
-      <div className="profile-content">
-        {/* 用户信息卡片 */}
-        <div className="profile-card">
-          <h2>基本信息</h2>
-          <form onSubmit={handleUpdateUsername}>
-            <div className="form-group">
-              <label htmlFor="username">用户名</label>
-              <input
-                type="text"
-                id="username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-                minLength={6}
-                pattern="[a-zA-Z0-9_]+"
-                placeholder="请输入用户名（至少6个字符）"
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-16">
+        <div className="md:col-span-4 space-y-8">
+          <div className="relative group aspect-square bg-card rounded-[2.5rem] flex items-center justify-center border border-foreground/5 shadow-inner overflow-hidden">
+            {user?.avatar ? (
+              <img
+                src={`${API_BASE}/uploads/avatars/${user.avatar}?t=${Date.now()}`}
+                alt="Avatar"
+                className="w-full h-full object-cover"
               />
-            </div>
-            <button type="submit" className="submit-button" disabled={loading}>
-              {loading ? '更新中...' : '更新用户名'}
-            </button>
-          </form>
+            ) : (
+              <User className="w-16 h-16 text-foreground/10" />
+            )}
 
-          <form onSubmit={handleUpdateEmail} style={{ marginTop: '20px' }}>
-            <div className="form-group">
-              <label htmlFor="email">邮箱</label>
-              <input
-                type="email"
-                id="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                placeholder="请输入邮箱"
-              />
+            <label className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer flex flex-col items-center justify-center text-white gap-2 backdrop-blur-sm">
+              <Camera className="w-6 h-6" />
+              <span className="text-[10px] tracking-widest uppercase">更换头像</span>
+              <input type="file" className="hidden" accept="image/*" onChange={handleAvatarUpload} disabled={uploadingAvatar} />
+            </label>
+
+            {uploadingAvatar && (
+              <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-foreground" />
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <h3 className="text-xl font-serif">{user?.username}</h3>
+              <p className="text-[10px] text-secondary font-light tracking-widest uppercase break-all">{user?.email}</p>
             </div>
-            <button type="submit" className="submit-button" disabled={loading}>
-              {loading ? '更新中...' : '更新邮箱'}
+
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 text-red-500/60 hover:text-red-500 transition-colors text-[10px] tracking-[0.2em] uppercase font-light"
+            >
+              <LogOut className="w-3 h-3" />
+              <span>退出当前账户</span>
             </button>
-          </form>
+          </div>
         </div>
 
-        {/* 密码修改卡片 */}
-        <div className="profile-card">
-          <h2>修改密码</h2>
-          <form onSubmit={handleUpdatePassword}>
-            <PasswordInput
-              id="currentPassword"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              placeholder="请输入当前密码"
-              required
-              label="当前密码"
-            />
+        <div className="md:col-span-8 space-y-24">
+          <section className="space-y-20">
+            <ProfileFormSection 
+              icon={User}
+              title="身份标识" 
+              description="更新您的用户名，这也会改变您在画廊中的署名。"
+              onSubmit={(e: FormEvent) => { e.preventDefault(); handleUpdate('username', { username }); }}
+            >
+              <div className="space-y-3">
+                <label className="text-[10px] tracking-[0.2em] uppercase font-light text-secondary">通行用户名</label>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="w-full px-5 py-4 bg-card border-none rounded-2xl text-sm font-light focus:ring-1 focus:ring-foreground/10 transition-all outline-none"
+                />
+              </div>
+              <button
+                type="submit" 
+                disabled={loading}
+                className="luxury-button flex items-center gap-2"
+              >
+                {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                <span>更新身份信息</span>
+              </button>
+            </ProfileFormSection>
 
-            <PasswordInput
-              id="newPassword"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="请输入新密码（至少6个字符）"
-              required
-              minLength={6}
-              label="新密码"
-            />
+            <ProfileFormSection 
+              icon={Mail}
+              title="联系地址" 
+              description="用于登录验证和系统重要通知发送。"
+              onSubmit={(e: FormEvent) => { e.preventDefault(); handleUpdate('email', { email }); }}
+            >
+              <div className="space-y-3">
+                <label className="text-[10px] tracking-[0.2em] uppercase font-light text-secondary">注册邮箱</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-5 py-4 bg-card border-none rounded-2xl text-sm font-light focus:ring-1 focus:ring-foreground/10 transition-all outline-none"
+                />
+              </div>
+              <button
+                type="submit" 
+                disabled={loading}
+                className="luxury-button flex items-center gap-2"
+              >
+                {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                <span>更新通信地址</span>
+              </button>
+            </ProfileFormSection>
 
-            <PasswordInput
-              id="confirmPassword"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="请再次输入新密码"
-              required
-              minLength={6}
-              label="确认新密码"
-            />
-
-            <button type="submit" className="submit-button" disabled={loading}>
-              {loading ? '更新中...' : '更新密码'}
-            </button>
-          </form>
+            <ProfileFormSection 
+              icon={ShieldCheck}
+              title="安全防御" 
+              description="定期更换访问密钥。新密钥必须包含至少6位字符。"
+              onSubmit={(e: FormEvent) => {
+                e.preventDefault(); 
+                if (newPassword !== confirmPassword) {
+                  addToast('两次输入的密钥不一致', 'error');
+                  return;
+                }
+                handleUpdate('password', { currentPassword, newPassword }); 
+              }}
+            >
+              <div className="space-y-6">
+                <PasswordInput
+                  id="currentPassword"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="当前使用的密钥"
+                  label="安全验证"
+                />
+                <PasswordInput
+                  id="newPassword"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="请输入新密钥"
+                  label="设置新密钥"
+                />
+                <PasswordInput
+                  id="confirmPassword"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="请再次验证新密钥"
+                  label="验证新密钥"
+                />
+              </div>
+              <button
+                type="submit" 
+                disabled={loading}
+                className="luxury-button flex items-center gap-2"
+              >
+                {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                <span>重置安全密钥</span>
+              </button>
+            </ProfileFormSection>
+          </section>
         </div>
-
-        {/* 消息提示 */}
-        {error && <div className="error-message">{error}</div>}
-        {success && <div className="success-message">{success}</div>}
       </div>
-    </div>
+    </motion.div>
   );
 }
 
+function ProfileFormSection({ icon: Icon, title, description, children, onSubmit }: any) {
+  return (
+    <div className="space-y-6">
+      <div className="space-y-1">
+        <div className="flex items-center gap-2 text-foreground/80 mb-2">
+          <Icon className="w-4 h-4" />
+          <h3 className="text-lg font-serif tracking-tight">{title}</h3>
+        </div>
+        <p className="text-[10px] text-secondary font-light tracking-wide uppercase leading-relaxed">{description}</p>
+      </div>
+      <form onSubmit={onSubmit} className="space-y-6 max-w-md">
+        {children}
+      </form>
+    </div>
+  );
+}

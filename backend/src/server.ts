@@ -34,6 +34,7 @@ app.get('/api/health', (req, res) => {
 const uploadDir = process.env.UPLOAD_DIR || './uploads';
 const uploadPath = path.resolve(uploadDir);
 const thumbnailPath = path.resolve(uploadDir, 'thumbnails');
+const avatarPath = path.resolve(uploadDir, 'avatars');
 
 // 确保目录存在
 if (!fs.existsSync(uploadPath)) {
@@ -42,12 +43,15 @@ if (!fs.existsSync(uploadPath)) {
 if (!fs.existsSync(thumbnailPath)) {
   fs.mkdirSync(thumbnailPath, { recursive: true });
 }
+if (!fs.existsSync(avatarPath)) {
+  fs.mkdirSync(avatarPath, { recursive: true });
+}
 
 app.use('/uploads', express.static(uploadPath));
 app.use('/uploads/thumbnails', express.static(thumbnailPath));
+app.use('/uploads/avatars', express.static(avatarPath));
 
 // 启动服务器
 app.listen(PORT, () => {
   console.log(`🚀 Server is running on http://localhost:${PORT}`);
 });
-

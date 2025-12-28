@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authenticateToken } from '../middleware/auth.js';
-import { uploadImage, getImages, getImage, deleteImage, updateImageTags, searchImagesByAI } from '../controllers/imageController.js';
+import { uploadImage, getImages, getImage, deleteImage, updateImageTags, searchImagesByAI, updateImageContent } from '../controllers/imageController.js';
 import { reverseGeocode, diagnoseAmapAPI } from '../controllers/geocodingController.js';
 import { upload } from '../middleware/upload.js';
 
@@ -11,6 +11,9 @@ imageRouter.use(authenticateToken);
 
 // 上传图片
 imageRouter.post('/upload', upload.single('image'), uploadImage);
+
+// 覆盖/更新图片内容（编辑保存）
+imageRouter.post('/:id/edit', upload.single('image'), updateImageContent);
 
 // 获取图片列表
 imageRouter.get('/', getImages);
@@ -32,4 +35,3 @@ imageRouter.get('/:id', getImage);
 
 // 删除图片
 imageRouter.delete('/:id', deleteImage);
-

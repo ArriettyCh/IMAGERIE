@@ -3,6 +3,8 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../utils/prisma.js';
 import { AuthRequest } from '../middleware/auth.js';
+import path from 'path';
+import fs from 'fs';
 
 // 注册
 export const register = async (req: Request, res: Response) => {
@@ -42,6 +44,7 @@ export const register = async (req: Request, res: Response) => {
         id: true,
         username: true,
         email: true,
+        avatar: true,
         createdAt: true
       }
     });
@@ -113,6 +116,7 @@ export const login = async (req: Request, res: Response) => {
           id: user.id,
           username: user.username,
           email: user.email,
+          avatar: user.avatar,
           createdAt: user.createdAt
         },
         token
@@ -138,6 +142,7 @@ export const getCurrentUser = async (req: AuthRequest, res: Response) => {
         id: true,
         username: true,
         email: true,
+        avatar: true,
         createdAt: true,
         updatedAt: true
       }
@@ -198,6 +203,7 @@ export const updateUsername = async (req: AuthRequest, res: Response) => {
         id: true,
         username: true,
         email: true,
+        avatar: true,
         createdAt: true,
         updatedAt: true
       }
@@ -252,6 +258,7 @@ export const updateEmail = async (req: AuthRequest, res: Response) => {
         id: true,
         username: true,
         email: true,
+        avatar: true,
         createdAt: true,
         updatedAt: true
       }
@@ -332,3 +339,54 @@ export const updatePassword = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// 更新头像
+export const updateAvatar = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId!;
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({
+        success: false,
+        message: '未选择头像文件'
+      });
+    }
+
+    // 确保头像存放目录存在
+    const uploadDir = process.env.UPLOAD_DIR || './uploads';
+    const avatarsDir = path.join(uploadDir, 'avatars');
+    if (!fs.existsSync(avatarsDir)) {
+      fs.mkdirSync(avatarsDir, { recursive: true });
+    }
+
+    // 将上传的文件移动到 avatars 目录
+    const newPath = path.join(avatarsDir, file.filename);
+    fs.renameSync(file.path, newPath);
+
+    // 更新用户头像
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { avatar: file.filename },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        avatar: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    });
+
+    res.json({
+      success: true,
+      message: '头像更新成功',
+      data: user
+    });
+  } catch (error: any) {
+    console.error('更新头像错误:', error);
+    res.status(500).json({
+      success: false,
+      message: '更新头像失败'
+    });
+  }
+};

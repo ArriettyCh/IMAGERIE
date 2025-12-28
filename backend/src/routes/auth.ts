@@ -1,7 +1,8 @@
 import { Router } from 'express';
-import { register, login, getCurrentUser, updateUsername, updateEmail, updatePassword } from '../controllers/authController.js';
+import { register, login, getCurrentUser, updateUsername, updateEmail, updatePassword, updateAvatar } from '../controllers/authController.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { validateRegister, validateLogin } from '../middleware/validation.js';
+import { upload } from '../middleware/upload.js';
 
 export const authRouter = Router();
 
@@ -23,3 +24,5 @@ authRouter.patch('/email', authenticateToken, updateEmail);
 // 更新密码
 authRouter.patch('/password', authenticateToken, updatePassword);
 
+// 更新头像
+authRouter.post('/avatar', authenticateToken, upload.single('avatar'), updateAvatar);

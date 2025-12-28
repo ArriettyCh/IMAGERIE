@@ -6,6 +6,7 @@ interface User {
   id: number;
   username: string;
   email: string;
+  avatar?: string;
   createdAt: string;
 }
 
@@ -45,8 +46,7 @@ export const useAuthStore = create<AuthState>()(
           if (!user || !token) {
             throw new Error('服务器返回数据格式错误');
           }
-          
-          // 设置axios默认header
+
           axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
           set({
@@ -57,14 +57,11 @@ export const useAuthStore = create<AuthState>()(
         } catch (error: any) {
           console.error('登录错误:', error);
           if (error.response) {
-            // 服务器返回了错误响应
             const message = error.response.data?.message || `登录失败: ${error.response.status}`;
             throw new Error(message);
           } else if (error.request) {
-            // 请求已发出但没有收到响应
             throw new Error('无法连接到服务器，请检查后端服务是否运行');
           } else {
-            // 其他错误
             throw new Error(error.message || '登录失败');
           }
         }
@@ -87,8 +84,7 @@ export const useAuthStore = create<AuthState>()(
           if (!user || !token) {
             throw new Error('服务器返回数据格式错误');
           }
-          
-          // 设置axios默认header
+
           axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
           set({
@@ -99,14 +95,11 @@ export const useAuthStore = create<AuthState>()(
         } catch (error: any) {
           console.error('注册错误:', error);
           if (error.response) {
-            // 服务器返回了错误响应
             const message = error.response.data?.message || `注册失败: ${error.response.status}`;
             throw new Error(message);
           } else if (error.request) {
-            // 请求已发出但没有收到响应
             throw new Error('无法连接到服务器，请检查后端服务是否运行');
           } else {
-            // 其他错误
             throw new Error(error.message || '注册失败');
           }
         }
@@ -161,9 +154,7 @@ export const useAuthStore = create<AuthState>()(
   )
 );
 
-// 初始化时检查认证状态
 if (typeof window !== 'undefined') {
   const { checkAuth } = useAuthStore.getState();
   checkAuth();
 }
-

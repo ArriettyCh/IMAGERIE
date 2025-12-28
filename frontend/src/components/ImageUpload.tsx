@@ -1,7 +1,8 @@
 import { useState, useRef } from 'react';
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
-import './ImageUpload.css';
+import { motion } from 'framer-motion';
+import { Plus, Loader2 } from 'lucide-react';
 
 interface ImageUploadProps {
   onUploadSuccess?: () => void;
@@ -17,13 +18,11 @@ export default function ImageUpload({ onUploadSuccess }: ImageUploadProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // 验证文件类型
     if (!file.type.startsWith('image/')) {
       setError('请选择图片文件');
       return;
     }
 
-    // 验证文件大小（10MB）
     if (file.size > 10 * 1024 * 1024) {
       setError('图片大小不能超过10MB');
       return;
@@ -47,7 +46,6 @@ export default function ImageUpload({ onUploadSuccess }: ImageUploadProps) {
         onUploadSuccess();
       }
 
-      // 重置文件输入
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -60,21 +58,43 @@ export default function ImageUpload({ onUploadSuccess }: ImageUploadProps) {
   };
 
   return (
-    <div className="image-upload">
+    <div className="relative">
       <input
         ref={fileInputRef}
         type="file"
         accept="image/*"
         onChange={handleFileChange}
-        style={{ display: 'none' }}
+        className="hidden"
         id="image-upload-input"
         disabled={uploading}
       />
-      <label htmlFor="image-upload-input" className={`upload-button ${uploading ? 'uploading' : ''}`}>
-        {uploading ? '上传中...' : '上传图片'}
-      </label>
-      {error && <div className="upload-error">{error}</div>}
+      <motion.label
+        htmlFor="image-upload-input"
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        className={`luxury-button cursor-pointer flex items-center gap-2 min-w-[140px] justify-center ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+      >
+        {uploading ? (
+          <>
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span>正在上传</span>
+          </>
+        ) : (
+          <>
+            <Plus className="w-4 h-4" />
+            <span>添加作品</span>
+          </>
+        )}
+      </motion.label>
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="absolute top-full mt-2 right-0 text-[10px] text-red-500 tracking-wider uppercase font-light whitespace-nowrap"
+        >
+          {error}
+        </motion.div>
+      )}
     </div>
   );
 }
-

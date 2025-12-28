@@ -1,9 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
+import { useUIStore } from '../store/uiStore';
 import ImageEditor from '../components/ImageEditor';
-import './ImageDetail.css';
+import TagModal from '../components/TagModal';
+import { motion } from 'framer-motion';
+import { ArrowLeft, Crop, Palette, MapPin, Tag, Info, Trash2, Camera, Edit2, X } from 'lucide-react';
 
 interface ImageData {
   id: number;
@@ -18,61 +21,53 @@ interface ImageData {
   createdAt: string;
 }
 
+const API_BASE = 'http://localhost:3001';
+
 export default function ImageDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { token } = useAuthStore();
+  const { addToast, showConfirm } = useUIStore();
   const [image, setImage] = useState<ImageData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showEditor, setShowEditor] = useState(false);
+  const [showTagModal, setShowTagModal] = useState(false);
   const [editMode, setEditMode] = useState<'crop' | 'adjust' | null>(null);
   const [locationName, setLocationName] = useState<string>('');
+  const [lastUpdated, setLastUpdated] = useState<number>(Date.now());
+
+  const fetchImage = useCallback(async () => {
+    if (!token || !id) return;
+    try {
+      setLoading(true);
+      const response = await axios.get(`${API_BASE}/api/images/${id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const img = response.data.data;
+      setImage({
+        ...img,
+        exifData: typeof img.exifData === 'string' ? JSON.parse(img.exifData) : img.exifData,
+        aiTags: typeof img.aiTags === 'string' ? JSON.parse(img.aiTags) : img.aiTags,
+        size: formatFileSize(Number(img.size))
+      });
+      setLastUpdated(Date.now());
+    } catch (err: any) {
+      setError('无法获取作品信息');
+    } finally {
+      setLoading(false);
+    }
+  }, [id, token]);
 
   useEffect(() => {
     fetchImage();
-  }, [id, token]);
+  }, [fetchImage]);
 
-  // 将GPS坐标转换为十进制度数格式
-  // 支持数组格式（度分秒）、数字格式（十进制度数）和字符串格式
   const convertGPSCoordinate = (coord: any): number => {
-    if (typeof coord === 'number') {
-      return coord;
-    }
-
+    if (typeof coord === 'number') return coord;
     if (Array.isArray(coord) && coord.length >= 3) {
-      // 度分秒格式：[度, 分, 秒]
-      const degrees = Number(coord[0]) || 0;
-      const minutes = Number(coord[1]) || 0;
-      const seconds = Number(coord[2]) || 0;
-      return degrees + minutes / 60 + seconds / 3600;
+      return Number(coord[0]) + Number(coord[1]) / 60 + Number(coord[2]) / 3600;
     }
-
-    if (typeof coord === 'string') {
-      // 尝试解析字符串格式
-      // 1. 先尝试直接解析为数字（十进制度数）
-      const num = parseFloat(coord);
-      if (!isNaN(num) && coord.indexOf(',') === -1) {
-        return num;
-      }
-
-      // 2. 尝试解析逗号分隔的度分秒格式，如 "22,32,23.54"
-      const parts = coord.split(',').map(s => s.trim()).filter(s => s);
-      if (parts.length >= 3) {
-        const degrees = Number(parts[0]) || 0;
-        const minutes = Number(parts[1]) || 0;
-        const seconds = Number(parts[2]) || 0;
-        return degrees + minutes / 60 + seconds / 3600;
-      }
-
-      // 3. 如果只有两个部分，可能是度分格式
-      if (parts.length === 2) {
-        const degrees = Number(parts[0]) || 0;
-        const minutes = Number(parts[1]) || 0;
-        return degrees + minutes / 60;
-      }
-    }
-
     return NaN;
   };
 
@@ -80,302 +75,223 @@ export default function ImageDetail() {
     if (image?.exifData?.GPSLatitude && image?.exifData?.GPSLongitude) {
       const lat = convertGPSCoordinate(image.exifData.GPSLatitude);
       const lon = convertGPSCoordinate(image.exifData.GPSLongitude);
-      if (!isNaN(lat) && !isNaN(lon)) {
-        fetchAddress(lat, lon);
-      } else {
-        console.warn('GPS坐标格式无效:', image.exifData.GPSLatitude, image.exifData.GPSLongitude);
-        setLocationName('GPS坐标格式无效');
-      }
+      if (!isNaN(lat) && !isNaN(lon)) fetchAddress(lat, lon);
     }
   }, [image]);
 
   const fetchAddress = async (lat: number, lon: number) => {
     try {
-      // 通过后端代理请求，避免CORS问题
-      const response = await axios.get(
-        `http://localhost:3001/api/images/geocode/reverse?lat=${lat}&lon=${lon}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        }
-      );
+      const response = await axios.get(`${API_BASE}/api/images/geocode/reverse?lat=${lat}&lon=${lon}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.data.success) setLocationName(response.data.data.address);
+    } catch (e) { }
+  };
 
-      if (response.data.success && response.data.data.address) {
-        setLocationName(response.data.data.address);
-      } else {
-        setLocationName('未找到对应地名');
-      }
-    } catch (e: any) {
-      console.error(e);
-      setLocationName((e.response?.data?.message || e.message || '网络错误'));
+  const handleRemoveTag = async (tagToRemove: string) => {
+    if (!image || !token) return;
+    const currentTags = image.customTags?.split(/[,\uff0c]/).map(t => t.trim()) || [];
+    const newTags = currentTags.filter(t => t !== tagToRemove).join(',');
+
+    try {
+      await axios.patch(
+        `${API_BASE}/api/images/${image.id}/tags`,
+        { customTags: newTags || null },
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      addToast('标签已移除');
+      fetchImage();
+    } catch (error) {
+      addToast('移除失败', 'error');
     }
   };
 
-  const fetchImage = async () => {
-    if (!token || !id) return;
-
-    try {
-      setLoading(true);
-      const response = await axios.get(`http://localhost:3001/api/images/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      const img = response.data.data;
-
-      // 兼容性处理：如果 exifData 是字符串，尝试解析它
-      let parsedExif = img.exifData;
-      if (typeof img.exifData === 'string') {
+  const handleDelete = () => {
+    if (!image) return;
+    showConfirm({
+      title: '删除确认',
+      message: '确定要从您的收藏中永久移除这张图片吗？',
+      confirmLabel: '确认删除',
+      isDestructive: true,
+      onConfirm: async () => {
         try {
-          parsedExif = JSON.parse(img.exifData);
-        } catch (e) {
-          console.error('解析 EXIF 数据失败', e);
+          await axios.delete(`${API_BASE}/api/images/${image.id}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          addToast('作品已成功移除');
+          navigate('/');
+        } catch (err: any) {
+          addToast('操作失败', 'error');
         }
       }
-
-      // 兼容性处理：如果 aiTags 是字符串，尝试解析它
-      let parsedAiTags = img.aiTags;
-      if (typeof img.aiTags === 'string') {
-        try {
-          parsedAiTags = JSON.parse(img.aiTags);
-        } catch (e) {
-          console.error('解析 AI 标签失败', e);
-        }
-      }
-
-      setImage({
-        ...img,
-        exifData: parsedExif,
-        aiTags: parsedAiTags,
-        size: formatFileSize(Number(img.size))
-      });
-    } catch (err: any) {
-      const serverMsg = err.response?.data?.message;
-      const friendlyMsg = serverMsg && serverMsg.length <= 60 ? serverMsg : '请稍后重试';
-      setError('加载图片失败：' + friendlyMsg);
-    } finally {
-      setLoading(false);
-    }
+    });
   };
 
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
 
   const formatDate = (dateString: any) => {
     if (!dateString) return '未知';
-    try {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) return '无效日期';
-      return date.toLocaleDateString('zh-CN', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch (e) {
-      return '日期格式错误';
-    }
+    const date = new Date(dateString);
+    return isNaN(date.getTime()) ? '无效日期' : date.toLocaleDateString('zh-CN', {
+      year: 'numeric', month: 'long', day: 'numeric'
+    });
   };
 
-  const formatGPS = (val: any) => {
-    if (val === undefined || val === null) return '未知';
-    const num = Number(val);
-    if (isNaN(num)) return String(val);
-    return num.toFixed(6);
-  };
+  if (loading && !image) return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="w-8 h-8 border-2 border-foreground/10 border-t-foreground rounded-full animate-spin" />
+    </div>
+  );
 
-  if (loading) {
-    return <div className="image-detail-loading">加载中...</div>;
-  }
-
-  if (error || !image) {
-    return (
-      <div className="image-detail-error">
-        {error || '图片不存在'}
-        <button onClick={() => navigate('/')} className="back-button">返回</button>
-      </div>
-    );
-  }
+  if (error || !image) return (
+    <div className="py-24 text-center">
+      <p className="text-secondary font-light mb-8">{error || '作品不存在'}</p>
+      <button onClick={() => navigate('/')} className="luxury-button">返回画廊</button>
+    </div>
+  );
 
   return (
-    <div className="image-detail">
-      <div className="image-detail-header">
-        <button className="back-button" onClick={() => navigate('/')}>← 返回</button>
-        <h1>{image.originalName}</h1>
-        <div className="image-detail-actions">
+    <div className="max-w-[1440px] mx-auto px-6 space-y-12 pb-24">
+      <div className="flex justify-between items-center py-4">
+        <button onClick={() => navigate('/')} className="flex items-center gap-2 text-secondary hover:text-foreground transition-colors group">
+          <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
+          <span className="text-xs tracking-widest uppercase font-light">返回画廊</span>
+        </button>
+        <div className="flex gap-4">
           <button 
-            className="action-btn" 
-            onClick={() => {
-              setEditMode('crop');
-              setShowEditor(true);
-            }}
+            onClick={() => { setEditMode('crop'); setShowEditor(true); }}
+            className="flex items-center gap-2 px-6 py-2 rounded-full border border-foreground/5 hover:bg-card transition-colors text-xs font-light"
           >
-            裁剪
+            <Crop className="w-3.5 h-3.5" /> 裁剪
           </button>
           <button 
-            className="action-btn" 
-            onClick={() => {
-              setEditMode('adjust');
-              setShowEditor(true);
-            }}
+            onClick={() => { setEditMode('adjust'); setShowEditor(true); }}
+            className="flex items-center gap-2 px-6 py-2 rounded-full border border-foreground/5 hover:bg-card transition-colors text-xs font-light"
           >
-            调色
+            <Palette className="w-3.5 h-3.5" /> 调色
+          </button>
+          <div className="w-[1px] h-4 bg-foreground/10 self-center mx-2" />
+          <button
+            onClick={handleDelete}
+            className="flex items-center gap-2 px-6 py-2 rounded-full border border-red-500/10 hover:bg-red-50 text-red-500 transition-colors text-xs font-light"
+          >
+            <Trash2 className="w-3.5 h-3.5" /> 删除
           </button>
         </div>
       </div>
 
-      <div className="image-detail-content">
-        <div className="image-display">
-          <img
-            src={`http://localhost:3001/uploads/${image.filename}`}
-            alt={image.originalName}
-            className="main-image"
-          />
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
+        <div className="lg:col-span-8 flex flex-col gap-8">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="relative bg-card rounded-[2rem] overflow-hidden group shadow-2xl"
+          >
+            <img
+              key={lastUpdated}
+              src={`${API_BASE}/uploads/${image.filename}?t=${lastUpdated}`}
+              alt={image.originalName}
+              className="w-full h-auto max-h-[80vh] object-contain mx-auto"
+            />
+          </motion.div>
+
+          <div className="flex flex-col gap-4">
+            <h1 className="text-3xl md:text-5xl font-serif tracking-tight">{image.originalName}</h1>
+            <p className="text-secondary font-light text-sm tracking-wide">
+              {image.width} × {image.height} · {image.size} · {formatDate(image.createdAt)}
+            </p>
+          </div>
         </div>
 
-        <div className="image-info-panel">
-          <div className="info-grid">
-            {/* 文件属性卡片 */}
-            <div className="glass-card">
-              <div className="card-icon">📁</div>
-              <div className="card-content">
-                <h4>文件属性</h4>
-                <div className="meta-row">
-                  <span>分辨率</span>
-                  <strong>{image.width} × {image.height}</strong>
-                </div>
-                <div className="meta-row">
-                  <span>体积</span>
-                  <strong>{image.size}</strong>
-                </div>
-                <div className="meta-row">
-                  <span>上传时间</span>
-                  <strong>{formatDate(image.createdAt)}</strong>
-                </div>
+        <div className="lg:col-span-4 space-y-12">
+          {image.aiTags?.description && (
+            <section className="space-y-4">
+              <div className="flex items-center gap-2 text-secondary">
+                <Info className="w-4 h-4" />
+                <h3 className="text-[10px] tracking-[0.2em] uppercase font-light">AI 视觉解读</h3>
               </div>
-            </div>
+              <p className="text-lg font-light leading-relaxed text-foreground/80 italic">
+                “{image.aiTags.description}”
+              </p>
+            </section>
+          )}
 
-            {/* 拍摄器材卡片 */}
-            {image.exifData && typeof image.exifData === 'object' && (
-              <div className="glass-card">
-                <div className="card-icon">📷</div>
-                <div className="card-content">
-                  <h4>拍摄器材</h4>
-                  <div className="meta-row">
-                    <span>品牌</span>
-                    <strong>{image.exifData.Make || '未知'}</strong>
-                  </div>
-                  <div className="meta-row">
-                    <span>型号</span>
-                    <strong>{image.exifData.Model || '未知'}</strong>
-                  </div>
-                  <div className="meta-row">
-                    <span>拍摄时间</span>
-                    <strong>{formatDate(image.exifData.DateTimeOriginal)}</strong>
-                  </div>
-                </div>
+          <div className="grid grid-cols-1 gap-12">
+            <MetaSection icon={Camera} title="拍摄器材">
+              <MetaRow label="品牌" value={image.exifData?.Make} />
+              <MetaRow label="型号" value={image.exifData?.Model} />
+              <MetaRow label="时间" value={formatDate(image.exifData?.DateTimeOriginal)} />
+            </MetaSection>
+
+            <MetaSection icon={MapPin} title="地理位置">
+              <div className="text-sm font-light leading-relaxed text-foreground/70">
+                {locationName || (image.exifData?.GPSLatitude ? '正在定位解析...' : '无位置信息')}
               </div>
-            )}
+            </MetaSection>
 
-            {/* 地理位置卡片 */}
-            <div className="glass-card">
-              <div className="card-icon">📍</div>
-              <div className="card-content">
-                <h4>拍摄地点</h4>
-                <div className="location-name">
-                  {locationName || (image.exifData && typeof image.exifData === 'object' && (image.exifData.GPSLatitude || image.exifData.GPSLongitude) ? '正在解析位置...' : '未提供位置信息')}
-                </div>
-                {image.exifData && typeof image.exifData === 'object' && (image.exifData.GPSLatitude || image.exifData.GPSLongitude) && (
-                  <div className="gps-coords">
-                    {formatGPS(image.exifData.GPSLatitude)}, {formatGPS(image.exifData.GPSLongitude)}
-                  </div>
+            <MetaSection
+              icon={Tag}
+              title="标签云"
+              extra={
+                <button
+                  onClick={() => setShowTagModal(true)}
+                  className="p-1 hover:bg-black/5 rounded-full transition-colors text-secondary hover:text-foreground"
+                  title="编辑标签"
+                >
+                  <Edit2 className="w-3 h-3" />
+                </button>
+              }
+            >
+              <div className="flex flex-wrap gap-2">
+                {image.customTags?.split(/[,\uff0c]/).filter(t => t.trim()).map((t, i) => (
+                  <span key={i} className="px-3 py-1 rounded-full bg-card text-[10px] tracking-wider uppercase font-light border border-foreground/5 flex items-center group/tag">
+                    {t.trim()}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleRemoveTag(t.trim()); }}
+                      className="hidden group-hover/tag:flex ml-2 text-secondary hover:text-red-500 transition-colors"
+                    >
+                      <X className="w-2.5 h-2.5" />
+                    </button>
+                  </span>
+                ))}
+                {image.aiTags?.tags?.map((t: string, i: number) => (
+                  <span key={i} className="px-3 py-1 rounded-full bg-accent/5 text-accent text-[10px] tracking-wider uppercase font-light border border-accent/10">
+                    {t}
+                  </span>
+                ))}
+                {!image.customTags && (!image.aiTags?.tags || image.aiTags.tags.length === 0) && (
+                  <span className="text-[10px] text-secondary font-light italic">暂无标签</span>
                 )}
               </div>
-            </div>
-
-            {/* 标签卡片 */}
-            <div className="glass-card">
-              <div className="card-icon">🏷️</div>
-              <div className="card-content">
-                <h4>标签管理</h4>
-                {image.customTags ? (
-                  <div className="tags-display">
-                    <div className="tags-section">
-                      <strong>自定义标签：</strong>
-                      {image.customTags.split(',').map((tag, index) => (
-                        <span key={index} className="tag-item">{tag.trim()}</span>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-                {image.aiTags && typeof image.aiTags === 'object' ? (
-                  <div className="tags-display">
-                    {image.aiTags.categories && Array.isArray(image.aiTags.categories) && image.aiTags.categories.length > 0 && (
-                      <div className="tags-section">
-                        <strong>AI分类：</strong>
-                        {image.aiTags.categories.map((tag: string, index: number) => (
-                          <span key={index} className="tag-item ai-tag">{tag}</span>
-                        ))}
-                      </div>
-                    )}
-                    {image.aiTags.tags && Array.isArray(image.aiTags.tags) && image.aiTags.tags.length > 0 && (
-                      <div className="tags-section">
-                        <strong>AI标签：</strong>
-                        {image.aiTags.tags.map((tag: string, index: number) => (
-                          <span key={index} className="tag-item ai-tag">{tag}</span>
-                        ))}
-                      </div>
-                    )}
-                    {image.aiTags.objects && Array.isArray(image.aiTags.objects) && image.aiTags.objects.length > 0 && (
-                      <div className="tags-section">
-                        <strong>识别物体：</strong>
-                        {image.aiTags.objects.map((obj: string, index: number) => (
-                          <span key={index} className="tag-item ai-tag">{obj}</span>
-                        ))}
-                      </div>
-                    )}
-                    {image.aiTags.description && (
-                      <div className="tags-section">
-                        <strong>AI描述：</strong>
-                        <p className="ai-description">{image.aiTags.description}</p>
-                      </div>
-                    )}
-                  </div>
-                ) : image.aiTags && typeof image.aiTags === 'string' ? (
-                  <div className="tags-display">
-                    <div className="tags-section">
-                      <strong>AI分析：</strong>
-                      <p className="ai-description">{image.aiTags}</p>
-                    </div>
-                  </div>
-                ) : null}
-                {!image.customTags && (!image.aiTags || (typeof image.aiTags === 'object' && Object.keys(image.aiTags).length === 0)) && (
-                  <div className="no-tags">暂无标签</div>
-                )}
-              </div>
-            </div>
+            </MetaSection>
           </div>
         </div>
       </div>
 
       {showEditor && image && (
         <ImageEditor
-          imageUrl={`http://localhost:3001/uploads/${image.filename}`}
+          imageUrl={`${API_BASE}/uploads/${image.filename}`}
           imageId={image.id}
           mode={editMode!}
-          onClose={() => {
-            setShowEditor(false);
-            setEditMode(null);
-          }}
+          onClose={() => { setShowEditor(false); setEditMode(null); }}
           onSave={() => {
             setShowEditor(false);
             setEditMode(null);
+            fetchImage(); 
+          }}
+        />
+      )}
+      {showTagModal && image && (
+        <TagModal
+          imageId={image.id}
+          currentTags={image.customTags || ''}
+          onClose={() => setShowTagModal(false)}
+          onSave={() => {
+            setShowTagModal(false);
             fetchImage();
           }}
         />
@@ -384,3 +300,27 @@ export default function ImageDetail() {
   );
 }
 
+function MetaSection({ icon: Icon, title, children, extra }: { icon: any, title: string, children: React.ReactNode, extra?: React.ReactNode }) {
+  return (
+    <section className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-secondary">
+          <Icon className="w-4 h-4" />
+          <h3 className="text-[10px] tracking-[0.2em] uppercase font-light">{title}</h3>
+        </div>
+        {extra}
+      </div>
+      <div className="space-y-3">{children}</div>
+    </section>
+  );
+}
+
+function MetaRow({ label, value }: { label: string, value: any }) {
+  if (!value) return null;
+  return (
+    <div className="flex justify-between items-center text-sm">
+      <span className="font-light text-secondary">{label}</span>
+      <span className="font-normal text-foreground/80">{value}</span>
+    </div>
+  );
+}

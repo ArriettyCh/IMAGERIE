@@ -2,9 +2,17 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
+import { useUIStore } from '../store/uiStore';
 import ImageCarousel from './ImageCarousel';
 import TagModal from './TagModal';
-import './ImageList.css';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Trash2, Tag, Play, CheckCircle2, Circle } from 'lucide-react';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 interface Image {
   id: number;
@@ -17,53 +25,34 @@ interface Image {
   customTags?: string | null;
 }
 
+const API_BASE = 'http://localhost:3001';
+
 export default function ImageList() {
   const [images, setImages] = useState<Image[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [search, setSearch] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [aiSearchQuery, setAiSearchQuery] = useState('');
-  const [lastAiSearchQuery, setLastAiSearchQuery] = useState('');
-  const [showAiSearch, setShowAiSearch] = useState(false);
-  const [aiSearching, setAiSearching] = useState(false);
-  const [isAiSearchMode, setIsAiSearchMode] = useState(false);
   const [selectedImages, setSelectedImages] = useState<Set<number>>(new Set());
   const [showCarousel, setShowCarousel] = useState(false);
   const [showTagModal, setShowTagModal] = useState(false);
   const [tagImageId, setTagImageId] = useState<number | null>(null);
+
   const { token } = useAuthStore();
+  const { addToast, showConfirm, searchQuery, setSearchQuery, isAiSearchMode, setIsAiSearchMode, setIsSearching, searchTrigger } = useUIStore();
   const navigate = useNavigate();
 
-  const friendlyError = (msg?: string) => {
-    if (!msg) return '请稍后重试';
-    return msg.length <= 60 ? msg : '请稍后重试';
-  };
-
-  const fetchImages = async () => {
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-
+  const fetchImages = async (query = '') => {
+    if (!token) return;
     try {
       setLoading(true);
-      setError('');
-      setIsAiSearchMode(false); // 重置AI搜索模式
-      const response = await axios.get(`http://localhost:3001/api/images?search=${searchTerm}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      setIsAiSearchMode(false);
+      const response = await axios.get(`${API_BASE}/api/images?search=${query}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
       });
-
       setImages(response.data.data.images.map((img: any) => ({
         ...img,
         size: formatFileSize(Number(img.size))
       })));
     } catch (err: any) {
-      const serverMsg = err.response?.data?.message;
-      setError('加载图片列表失败：' + friendlyError(serverMsg));
-      console.error(err);
+      addToast('无法加载画廊，请稍后再试', 'error');
     } finally {
       setLoading(false);
     }
@@ -71,253 +60,229 @@ export default function ImageList() {
 
   useEffect(() => {
     fetchImages();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, searchTerm]);
+  }, [token]);
+
+  // Listen for search triggers from the top bar
+  useEffect(() => {
+    if (searchTrigger > 0) {
+      if (isAiSearchMode) {
+        handleAiSearch();
+      } else {
+        handleNormalSearch();
+      }
+    }
+  }, [searchTrigger]);
 
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
+
+  const handleNormalSearch = () => {
+    fetchImages(searchQuery);
+  };
+
+  const handleAiSearch = async () => {
+    if (!searchQuery.trim()) {
+      addToast('请输入搜索内容', 'info');
+      return;
+    }
+
+    try {
+      setIsSearching(true);
+      const response = await axios.post(
+        `${API_BASE}/api/images/search/ai`,
+        { query: searchQuery },
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+
+      if (response.data.success) {
+        setImages(response.data.data.images.map((img: any) => ({
+          ...img,
+          size: formatFileSize(Number(img.size))
+        })));
+        setIsAiSearchMode(true);
+        addToast(`AI 已为您找到 ${response.data.data.images.length} 张相关图片`);
+      }
+    } catch (err: any) {
+      addToast('AI 搜索暂时不可用', 'error');
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   const handleDelete = async (id: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm('确定要删除这张图片吗？')) return;
-
-    try {
-      await axios.delete(`http://localhost:3001/api/images/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
+    showConfirm({
+      title: '删除确认',
+      message: '确定要从您的收藏中永久移除这张图片吗？此操作不可撤销。',
+      confirmLabel: '确认删除',
+      isDestructive: true,
+      onConfirm: async () => {
+        try {
+          await axios.delete(`${API_BASE}/api/images/${id}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          setImages(prev => prev.filter(img => img.id !== id));
+          setSelectedImages(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(id);
+            return newSet;
+          });
+          addToast('作品已成功移除');
+        } catch (err: any) {
+          addToast('操作失败，请重试', 'error');
         }
-      });
-      fetchImages(); // 刷新列表
-      setSelectedImages(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(id);
-        return newSet;
-      });
-    } catch (err: any) {
-      alert('删除失败：' + (err.response?.data?.message || '未知错误'));
-    }
+      }
+    });
   };
 
   const handleToggleSelect = (id: number, e: React.MouseEvent) => {
     e.stopPropagation();
     setSelectedImages(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
-      } else {
-        newSet.add(id);
-      }
+      if (newSet.has(id)) newSet.delete(id);
+      else newSet.add(id);
       return newSet;
     });
   };
 
-  const handleViewDetail = (id: number) => {
-    navigate(`/image/${id}`);
-  };
-
-  const handleCarousel = () => {
-    if (selectedImages.size === 0) {
-      alert('请先选择要轮播的图片');
-      return;
-    }
-    setShowCarousel(true);
-  };
-
-  const handleSetTag = (id: number, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setTagImageId(id);
-    setShowTagModal(true);
-  };
-
-  const handleTagSaved = () => {
-    fetchImages();
-    setShowTagModal(false);
-    setTagImageId(null);
-  };
-
-  const handleAiSearch = async () => {
-    if (!aiSearchQuery.trim()) {
-      alert('请输入搜索内容');
-      return;
-    }
-
-    try {
-      setAiSearching(true);
-      setLoading(true); // 设置loading状态
-      setError('');
-      const response = await axios.post(
-        'http://localhost:3001/api/images/search/ai',
-        { query: aiSearchQuery },
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        }
-      );
-
-      if (response.data.success) {
-        const matchedImages = response.data.data.images.map((img: any) => ({
-          ...img,
-          size: formatFileSize(Number(img.size))
-        }));
-        setImages(matchedImages);
-        setSearchTerm(''); // 清空普通搜索
-        setIsAiSearchMode(true); // 标记为AI搜索模式
-        setLastAiSearchQuery(aiSearchQuery); // 保存最后的搜索查询
-        setShowAiSearch(false);
-        setLoading(false); // 确保loading状态正确
-      } else {
-        setError('AI搜索失败：' + (response.data.message || '未知错误'));
-        setIsAiSearchMode(false);
-      }
-    } catch (err: any) {
-      setError('AI搜索失败：请稍后重试（网络或AI服务繁忙）');
-      console.error(err);
-      setIsAiSearchMode(false);
-    } finally {
-      setAiSearching(false);
-      setLoading(false); // 确保loading状态被重置
-    }
-  };
-
-  if (loading) {
-    return <div className="image-list-loading">加载中...</div>;
-  }
-
-  if (error) {
-    return <div className="image-list-error">{error}</div>;
-  }
-
   return (
-    <>
-      <div className="image-list-header">
-        <div className="search-bar">
-          <input
-            type="text"
-            placeholder="按文件名或标签搜索..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && setSearchTerm(search)}
-          />
-          <button onClick={() => setSearchTerm(search)}>搜索</button>
+    <div className="space-y-8">
+      {isAiSearchMode && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center justify-center gap-4 mb-8"
+        >
+          <span className="text-[10px] tracking-[0.2em] text-accent uppercase font-medium">当前为 AI 智能检索结果</span>
           <button
-            className="ai-search-button"
-            onClick={() => {
-              setShowAiSearch(!showAiSearch);
-              if (showAiSearch) {
-                setAiSearchQuery('');
-              }
-            }}
-            title="AI智能搜索"
+            onClick={() => { setSearchQuery(''); fetchImages(); }}
+            className="text-[10px] tracking-[0.2em] text-secondary hover:text-foreground uppercase font-light underline underline-offset-4"
           >
-            🤖 AI搜索
+            显示全部
           </button>
-        </div>
+        </motion.div>
+      )}
 
-        {showAiSearch && (
-          <div className="ai-search-panel">
-            <input
-              type="text"
-              placeholder="用自然语言描述你想找的图片，例如：找一些风景照片、包含人物的图片..."
-              value={aiSearchQuery}
-              onChange={(e) => setAiSearchQuery(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleAiSearch()}
-              className="ai-search-input"
-            />
-            <button
-              onClick={handleAiSearch}
-              disabled={aiSearching}
-              className="ai-search-submit"
-            >
-              {aiSearching ? '搜索中...' : '搜索'}
-            </button>
-            <button
-              onClick={() => {
-                setShowAiSearch(false);
-                setAiSearchQuery('');
-                setIsAiSearchMode(false);
-                setLastAiSearchQuery('');
-                fetchImages(); // 恢复显示所有图片
-              }}
-              className="ai-search-cancel"
-            >
-              取消
-            </button>
-          </div>
-        )}
-
+      {/* Floating Action Menu for Selections */}
+      <AnimatePresence>
         {selectedImages.size > 0 && (
-          <div className="image-list-actions">
-            <button className="action-button carousel-button" onClick={handleCarousel}>
-              轮播查看 ({selectedImages.size})
-            </button>
-            <button
-              className="action-button clear-button"
-              onClick={() => setSelectedImages(new Set())}
-            >
-              取消选择
-            </button>
-          </div>
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 glass px-6 py-4 rounded-3xl shadow-2xl flex items-center gap-6 border border-white/40"
+          >
+            <div className="text-sm font-medium pr-6 border-r border-foreground/10">
+              已选择 {selectedImages.size} 项
+            </div>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setShowCarousel(true)}
+                className="flex items-center gap-2 text-sm hover:text-accent transition-colors"
+              >
+                <Play className="w-4 h-4" /> 轮播
+              </button>
+              <button 
+                onClick={() => setSelectedImages(new Set())}
+                className="flex items-center gap-2 text-sm text-secondary hover:text-foreground transition-colors"
+              >
+                取消
+              </button>
+            </div>
+          </motion.div>
         )}
-      </div>
-      
-      {images.length === 0 ? (
-        <div className="image-list-empty">
-          {isAiSearchMode
-            ? `AI搜索"${lastAiSearchQuery || aiSearchQuery}"没有找到匹配的图片`
-            : searchTerm
-              ? '没有找到匹配的图片'
-              : '还没有上传任何图片，点击上方"上传图片"按钮开始上传'}
+      </AnimatePresence>
+
+      {/* Gallery Grid */}
+      {loading && images.length === 0 ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="aspect-[4/5] bg-card rounded-3xl animate-pulse" />
+          ))}
+        </div>
+      ) : images.length === 0 ? (
+        <div className="py-24 text-center">
+          <p className="text-secondary font-light tracking-widest uppercase text-xs">暂无发现匹配的作品</p>
         </div>
       ) : (
-          <div className="image-list">
-            {images.map(image => (
-              <div
+            <motion.div
+              layout
+              className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8"
+            >
+              <AnimatePresence>
+                {images.map((image) => (
+                  <motion.div
+                    layout
                 key={image.id}
-                className={`image-item ${selectedImages.has(image.id) ? 'selected' : ''}`}
-                onClick={() => handleViewDetail(image.id)}
-              >
-                <div className="image-thumbnail">
-                  <img
-                    src={`http://localhost:3001/uploads/thumbnails/${image.filename}`}
-                    alt={image.originalName}
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = `http://localhost:3001/uploads/${image.filename}`;
-                    }}
-                  />
-                  {selectedImages.has(image.id) && (
-                    <div className="select-indicator">✓</div>
-                  )}
-                </div>
-                <div className="image-actions">
-                  <button
-                    className="icon-button select-button"
-                    onClick={(e) => handleToggleSelect(image.id, e)}
-                    title={selectedImages.has(image.id) ? '取消选择' : '选择'}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                    className="group relative aspect-[4/5] overflow-hidden rounded-3xl bg-card"
                   >
-                    {selectedImages.has(image.id) ? '✓' : '○'}
-                  </button>
-                  <button
-                    className="icon-button tag-button"
-                    onClick={(e) => handleSetTag(image.id, e)}
-                    title="设置标签"
-                  >
-                    🏷️
-                  </button>
-                  <button
-                    className="icon-button delete-button"
-                    onClick={(e) => handleDelete(image.id, e)}
-                    title="删除"
-                  >
-                    🗑️
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+                    <img
+                      src={`${API_BASE}/uploads/thumbnails/${image.filename}`}
+                      alt={image.originalName}
+                      className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-[0.16, 1, 0.3, 1] group-hover:scale-110"
+                      onClick={() => navigate(`/image/${image.id}`)}
+                      loading="lazy"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = `${API_BASE}/uploads/${image.filename}`;
+                      }}
+                    />
+
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                      <div className="absolute bottom-0 left-0 right-0 p-6 flex justify-between items-end pointer-events-auto">
+                        <div className="flex flex-col">
+                          <span className="text-white text-xs font-light tracking-widest truncate max-w-[150px]">
+                            {image.originalName}
+                          </span>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {image.customTags?.split(/[,\uff0c]/).filter(t => t.trim()).slice(0, 2).map((tag, idx) => (
+                              <span key={idx} className="text-[8px] px-1.5 py-0.5 bg-white/10 rounded text-white/80 uppercase tracking-tighter">
+                                {tag.trim()}
+                              </span>
+                            ))}
+                            <span className="text-white/60 text-[10px] uppercase tracking-tighter">
+                              {image.size}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); setTagImageId(image.id); setShowTagModal(true); }}
+                            className="p-2 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-white transition-colors"
+                          >
+                            <Tag className="w-3.5 h-3.5" />
+                          </button>
+                          <button 
+                            onClick={(e) => handleDelete(image.id, e)}
+                            className="p-2 bg-white/10 hover:bg-red-500/20 backdrop-blur-md rounded-full text-white hover:text-red-400 transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={(e) => handleToggleSelect(image.id, e)}
+                      className={cn(
+                        "absolute top-4 right-4 p-2 rounded-full backdrop-blur-md transition-all duration-300 z-10",
+                        selectedImages.has(image.id)
+                          ? "bg-accent text-white scale-110"
+                          : "bg-black/20 text-white opacity-0 group-hover:opacity-100"
+                      )}
+                    >
+                      {selectedImages.has(image.id) ? <CheckCircle2 className="w-4 h-4" /> : <Circle className="w-4 h-4" />}
+                    </button>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </motion.div>
       )}
 
       {showCarousel && (
@@ -331,14 +296,10 @@ export default function ImageList() {
         <TagModal
           imageId={tagImageId}
           currentTags={images.find(img => img.id === tagImageId)?.customTags || ''}
-          onClose={() => {
-            setShowTagModal(false);
-            setTagImageId(null);
-          }}
-          onSave={handleTagSaved}
+          onClose={() => { setShowTagModal(false); setTagImageId(null); }}
+          onSave={() => { fetchImages(); setShowTagModal(false); }}
         />
       )}
-    </>
+    </div>
   );
 }
-
