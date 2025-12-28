@@ -35,7 +35,7 @@ export default function ImageUpload({ onUploadSuccess }: ImageUploadProps) {
       const formData = new FormData();
       formData.append('image', file);
 
-      await axios.post('http://localhost:3001/api/images/upload', formData, {
+      await axios.post('/api/images/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
           'Authorization': `Bearer ${token}`

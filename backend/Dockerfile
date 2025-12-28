@@ -2,6 +2,9 @@ FROM node:20-alpine
 
 WORKDIR /app
 
+# 安装系统依赖（Prisma 需要 OpenSSL）
+RUN apk add --no-cache openssl
+
 # 复制package文件
 COPY package*.json ./
 COPY prisma ./prisma/

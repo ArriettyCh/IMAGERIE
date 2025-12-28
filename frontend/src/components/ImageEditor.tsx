@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
 import { useUIStore } from '../store/uiStore';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { X, RotateCcw, Sun, Contrast, Droplets, Scissors, Layers, Loader2, Save } from 'lucide-react';
 
 interface ImageEditorProps {
@@ -13,7 +13,7 @@ interface ImageEditorProps {
   onSave: () => void;
 }
 
-const API_BASE = 'http://localhost:3001';
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
 export default function ImageEditor({ imageUrl, imageId, mode, onClose, onSave }: ImageEditorProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);

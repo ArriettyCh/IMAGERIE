@@ -36,10 +36,6 @@ yarn-error.log*
 *.db
 *.sqlite
 
-# Uploads
-uploads/
-**/uploads/
-
 # Prisma
 **/prisma/migrations/
 

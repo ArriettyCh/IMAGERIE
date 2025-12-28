@@ -26,7 +26,7 @@ services:
     ports:
       - "3001:3001"
     environment:
-      DATABASE_URL: mysql://appuser:apppassword@mysql:3306/image_manager?schema=public
+      DATABASE_URL: mysql://appuser:apppassword@mysql:3306/image_manager
       JWT_SECRET: your-secret-key-change-this-in-production
       JWT_EXPIRES_IN: 7d
       PORT: 3001
@@ -37,6 +37,7 @@ services:
     volumes:
       - ./backend/uploads:/app/uploads
     restart: unless-stopped
+    command: sh -c "sleep 5 && npx prisma migrate deploy && npm start"
 
   frontend:
     build:

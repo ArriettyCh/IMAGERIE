@@ -12,7 +12,7 @@ interface TagModalProps {
   onSave: () => void;
 }
 
-const API_BASE = 'http://localhost:3001';
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
 export default function TagModal({ imageId, currentTags, onClose, onSave }: TagModalProps) {
   const [tags, setTags] = useState('');
