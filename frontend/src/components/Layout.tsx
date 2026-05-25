@@ -63,7 +63,7 @@ export default function Layout({ children }: LayoutProps) {
               </div>
               <input
                 type="text"
-                placeholder="搜索您的收藏..."
+                placeholder="Search your collection..."
                 className="w-full pl-11 pr-48 py-2 bg-black/5 border-none rounded-full text-sm font-light focus:ring-1 focus:ring-foreground/10 transition-all outline-none"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -73,16 +73,16 @@ export default function Layout({ children }: LayoutProps) {
                   type="submit"
                   className="px-4 py-1 rounded-full bg-black/10 hover:bg-black/10 text-foreground text-[10px] font-medium transition-all"
                 >
-                  搜索
+                  Search
                 </button>
                 <button
                   type="button"
                   onClick={handleAiSearch}
-                  title="AI 智能搜索"
+                  title="AI Search"
                   className="px-4 py-1 rounded-full bg-foreground text-white text-[10px] font-medium flex items-center gap-1.5 hover:bg-foreground/90 transition-all shrink-0"
                 >
                   <Sparkles className="w-3 h-3" />
-                  <span className="hidden lg:inline">AI 查找</span>
+                  <span className="hidden lg:inline">AI Search</span>
                 </button>
               </div>
             </form>
@@ -110,7 +110,7 @@ export default function Layout({ children }: LayoutProps) {
               whileTap={{ scale: 0.95 }}
               onClick={handleLogout} 
               className="text-secondary hover:text-foreground transition-colors p-2"
-              title="退出登录"
+              title="Log out"
             >
               <LogOut className="w-5 h-5 stroke-[1.5px]" />
             </motion.button>

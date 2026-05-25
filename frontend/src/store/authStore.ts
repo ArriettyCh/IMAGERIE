@@ -38,13 +38,13 @@ export const useAuthStore = create<AuthState>()(
           });
 
           if (!response.data.success || !response.data.data) {
-            throw new Error(response.data.message || '登录失败');
+            throw new Error(response.data.message || 'Login failed.');
           }
 
           const { user, token } = response.data.data;
           
           if (!user || !token) {
-            throw new Error('服务器返回数据格式错误');
+            throw new Error('The server returned an invalid response.');
           }
 
           axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
@@ -55,14 +55,14 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: true,
           });
         } catch (error: any) {
-          console.error('登录错误:', error);
+          console.error('Login error:', error);
           if (error.response) {
-            const message = error.response.data?.message || `登录失败: ${error.response.status}`;
+            const message = error.response.data?.message || `Login failed: ${error.response.status}`;
             throw new Error(message);
           } else if (error.request) {
-            throw new Error('无法连接到服务器，请检查后端服务是否运行');
+            throw new Error('Unable to connect to the server. Please check whether the backend is running.');
           } else {
-            throw new Error(error.message || '登录失败');
+            throw new Error(error.message || 'Login failed.');
           }
         }
       },
@@ -76,13 +76,13 @@ export const useAuthStore = create<AuthState>()(
           });
 
           if (!response.data.success || !response.data.data) {
-            throw new Error(response.data.message || '注册失败');
+            throw new Error(response.data.message || 'Registration failed.');
           }
 
           const { user, token } = response.data.data;
           
           if (!user || !token) {
-            throw new Error('服务器返回数据格式错误');
+            throw new Error('The server returned an invalid response.');
           }
 
           axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
@@ -93,14 +93,14 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: true,
           });
         } catch (error: any) {
-          console.error('注册错误:', error);
+          console.error('Registration error:', error);
           if (error.response) {
-            const message = error.response.data?.message || `注册失败: ${error.response.status}`;
+            const message = error.response.data?.message || `Registration failed: ${error.response.status}`;
             throw new Error(message);
           } else if (error.request) {
-            throw new Error('无法连接到服务器，请检查后端服务是否运行');
+            throw new Error('Unable to connect to the server. Please check whether the backend is running.');
           } else {
-            throw new Error(error.message || '注册失败');
+            throw new Error(error.message || 'Registration failed.');
           }
         }
       },

@@ -53,7 +53,7 @@ export default function ImageDetail() {
       });
       setLastUpdated(Date.now());
     } catch (err: any) {
-      setError('无法获取作品信息');
+      setError('Unable to load image details.');
     } finally {
       setLoading(false);
     }
@@ -99,29 +99,29 @@ export default function ImageDetail() {
         { customTags: newTags || null },
         { headers: { 'Authorization': `Bearer ${token}` } }
       );
-      addToast('标签已移除');
+      addToast('Tag removed.');
       fetchImage();
     } catch (error) {
-      addToast('移除失败', 'error');
+      addToast('Remove failed.', 'error');
     }
   };
 
   const handleDelete = () => {
     if (!image) return;
     showConfirm({
-      title: '删除确认',
-      message: '确定要从您的收藏中永久移除这张图片吗？',
-      confirmLabel: '确认删除',
+      title: 'Confirm Deletion',
+      message: 'Are you sure you want to permanently remove this image from your collection?',
+      confirmLabel: 'Delete',
       isDestructive: true,
       onConfirm: async () => {
         try {
           await axios.delete(`${API_BASE}/api/images/${image.id}`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
-          addToast('作品已成功移除');
+          addToast('Image removed.');
           navigate('/');
         } catch (err: any) {
-          addToast('操作失败', 'error');
+          addToast('Operation failed.', 'error');
         }
       }
     });
@@ -134,9 +134,9 @@ export default function ImageDetail() {
   };
 
   const formatDate = (dateString: any) => {
-    if (!dateString) return '未知';
+    if (!dateString) return 'Unknown';
     const date = new Date(dateString);
-    return isNaN(date.getTime()) ? '无效日期' : date.toLocaleDateString('zh-CN', {
+    return isNaN(date.getTime()) ? 'Invalid date' : date.toLocaleDateString('en-US', {
       year: 'numeric', month: 'long', day: 'numeric'
     });
   };
@@ -149,8 +149,8 @@ export default function ImageDetail() {
 
   if (error || !image) return (
     <div className="py-24 text-center">
-      <p className="text-secondary font-light mb-8">{error || '作品不存在'}</p>
-      <button onClick={() => navigate('/')} className="luxury-button">返回画廊</button>
+      <p className="text-secondary font-light mb-8">{error || 'Image not found.'}</p>
+      <button onClick={() => navigate('/')} className="luxury-button">Back to Gallery</button>
     </div>
   );
 
@@ -159,27 +159,27 @@ export default function ImageDetail() {
       <div className="flex justify-between items-center py-4">
         <button onClick={() => navigate('/')} className="flex items-center gap-2 text-secondary hover:text-foreground transition-colors group">
           <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
-          <span className="text-xs tracking-widest uppercase font-light">返回画廊</span>
+          <span className="text-xs tracking-widest uppercase font-light">Back to Gallery</span>
         </button>
         <div className="flex gap-4">
           <button 
             onClick={() => { setEditMode('crop'); setShowEditor(true); }}
             className="flex items-center gap-2 px-6 py-2 rounded-full border border-foreground/5 hover:bg-card transition-colors text-xs font-light"
           >
-            <Crop className="w-3.5 h-3.5" /> 裁剪
+            <Crop className="w-3.5 h-3.5" /> Crop
           </button>
           <button 
             onClick={() => { setEditMode('adjust'); setShowEditor(true); }}
             className="flex items-center gap-2 px-6 py-2 rounded-full border border-foreground/5 hover:bg-card transition-colors text-xs font-light"
           >
-            <Palette className="w-3.5 h-3.5" /> 调色
+            <Palette className="w-3.5 h-3.5" /> Adjust
           </button>
           <div className="w-[1px] h-4 bg-foreground/10 self-center mx-2" />
           <button
             onClick={handleDelete}
             className="flex items-center gap-2 px-6 py-2 rounded-full border border-red-500/10 hover:bg-red-50 text-red-500 transition-colors text-xs font-light"
           >
-            <Trash2 className="w-3.5 h-3.5" /> 删除
+            <Trash2 className="w-3.5 h-3.5" /> Delete
           </button>
         </div>
       </div>
@@ -212,7 +212,7 @@ export default function ImageDetail() {
             <section className="space-y-4">
               <div className="flex items-center gap-2 text-secondary">
                 <Info className="w-4 h-4" />
-                <h3 className="text-[10px] tracking-[0.2em] uppercase font-light">AI 视觉解读</h3>
+                <h3 className="text-[10px] tracking-[0.2em] uppercase font-light">AI Visual Summary</h3>
               </div>
               <p className="text-lg font-light leading-relaxed text-foreground/80 italic">
                 “{image.aiTags.description}”
@@ -221,26 +221,26 @@ export default function ImageDetail() {
           )}
 
           <div className="grid grid-cols-1 gap-12">
-            <MetaSection icon={Camera} title="拍摄器材">
-              <MetaRow label="品牌" value={image.exifData?.Make} />
-              <MetaRow label="型号" value={image.exifData?.Model} />
-              <MetaRow label="时间" value={formatDate(image.exifData?.DateTimeOriginal)} />
+            <MetaSection icon={Camera} title="Camera">
+              <MetaRow label="Brand" value={image.exifData?.Make} />
+              <MetaRow label="Model" value={image.exifData?.Model} />
+              <MetaRow label="Time" value={formatDate(image.exifData?.DateTimeOriginal)} />
             </MetaSection>
 
-            <MetaSection icon={MapPin} title="地理位置">
+            <MetaSection icon={MapPin} title="Location">
               <div className="text-sm font-light leading-relaxed text-foreground/70">
-                {locationName || (image.exifData?.GPSLatitude ? '正在定位解析...' : '无位置信息')}
+                {locationName || (image.exifData?.GPSLatitude ? 'Resolving location...' : 'No location data')}
               </div>
             </MetaSection>
 
             <MetaSection
               icon={Tag}
-              title="标签云"
+              title="Tags"
               extra={
                 <button
                   onClick={() => setShowTagModal(true)}
                   className="p-1 hover:bg-black/5 rounded-full transition-colors text-secondary hover:text-foreground"
-                  title="编辑标签"
+                  title="Edit tags"
                 >
                   <Edit2 className="w-3 h-3" />
                 </button>
@@ -264,7 +264,7 @@ export default function ImageDetail() {
                   </span>
                 ))}
                 {!image.customTags && (!image.aiTags?.tags || image.aiTags.tags.length === 0) && (
-                  <span className="text-[10px] text-secondary font-light italic">暂无标签</span>
+                  <span className="text-[10px] text-secondary font-light italic">No tags yet</span>
                 )}
               </div>
             </MetaSection>

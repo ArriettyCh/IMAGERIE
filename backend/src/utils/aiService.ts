@@ -4,17 +4,17 @@ import path from 'path';
 import sharp from 'sharp';
 
 /**
- * OpenRouter AI Service - 健壮性增强版
+ * OpenRouter AI service with resilient response handling.
  */
 
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || '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';
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || '';
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-// 默认切换到 4o，多模态能力更强；可用 OPENROUTER_MODEL 覆盖
+// Use a vision-capable model by default; override with OPENROUTER_MODEL.
 const DEFAULT_MODEL = process.env.OPENROUTER_MODEL || 'openai/gpt-4o';
 const fsp = fs.promises;
 
 /**
- * 通用的 AI 请求封装
+ * Shared AI request wrapper.
  */
 async function sendAiRequest(payload: any, timeout = 60000) {
   return axios.post(OPENROUTER_API_URL, payload, {
@@ -25,13 +25,13 @@ async function sendAiRequest(payload: any, timeout = 60000) {
       'X-Title': 'Image Manager Pro'
     },
     timeout,
-    // 允许 4xx 状态码进入 then 块，以便我们手动处理错误信息
+    // Let 4xx responses pass through so the caller can log provider errors.
     validateStatus: (status) => status < 500
   });
 }
 
 /**
- * 将图片压缩到可控尺寸后转为 base64，优先使用缩略图以降低请求体积
+ * Compress an image to a bounded payload and prefer thumbnails to reduce request size.
  */
 async function prepareImagePayload(imagePath: string) {
   const thumbPath = path.join(path.dirname(imagePath), 'thumbnails', path.basename(imagePath));
@@ -52,7 +52,7 @@ async function prepareImagePayload(imagePath: string) {
       base64: buffer.toString('base64')
     };
   } catch (err) {
-    // 若压缩失败，退回原始文件
+    // Fall back to the original file if compression fails.
     const raw = await fsp.readFile(sourcePath);
     return {
       mimeType: targetMime,
@@ -62,7 +62,7 @@ async function prepareImagePayload(imagePath: string) {
 }
 
 /**
- * 文本搜索降级方案
+ * Text-search fallback.
  */
 export async function searchByTags(query: string, images: any[]): Promise<number[]> {
   const queryLower = query.toLowerCase().trim();
@@ -76,11 +76,11 @@ export async function searchByTags(query: string, images: any[]): Promise<number
 }
 
 /**
- * [健壮版] 分析单张图片并生成标签
+ * Analyze one image and generate structured tags.
  */
 export async function analyzeImageWithAI(imagePath: string): Promise<any> {
   try {
-    if (!fs.existsSync(imagePath)) return null;
+    if (!fs.existsSync(imagePath) || !OPENROUTER_API_KEY) return null;
 
     const prepared = await prepareImagePayload(imagePath);
     if (!prepared) return null;
@@ -91,18 +91,18 @@ export async function analyzeImageWithAI(imagePath: string): Promise<any> {
       messages: [{
         role: 'user',
         content: [
-          { type: 'text', text: '请用简体中文分析图片。返回JSON格式: {"categories":[], "tags":[], "description":"", "objects":[], "scene":""}。要求：1）所有字段内容必须使用中文名词或短语；2）不要输出英文或音译；3）直接返回JSON对象，不要附加解释或Markdown代码块。' },
+          { type: 'text', text: 'Analyze this image in English. Return JSON only in this shape: {"categories":[],"tags":[],"description":"","objects":[],"scene":""}. Use concise English nouns or phrases for all fields. Do not add explanations or Markdown code fences.' },
           { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}` } }
         ]
       }],
       max_tokens: 1000
     });
 
-    // 检查业务错误
+    // Check provider-level errors.
     if (response.status >= 400 || response.data?.error) {
-      console.error('AI标签生成失败:', {
+      console.error('AI tag generation failed:', {
         status: response.status,
-        message: response.data?.error?.message || '未知错误',
+        message: response.data?.error?.message || 'Unknown error',
         data: response.data
       });
       return null;
@@ -110,16 +110,16 @@ export async function analyzeImageWithAI(imagePath: string): Promise<any> {
 
     let content = response.data.choices?.[0]?.message?.content || '';
     if (!content) {
-      console.warn('AI分析：收到空内容');
+      console.warn('AI analysis returned empty content.');
       return null;
     }
 
-    // --- 核心修复：更强的JSON提取逻辑 ---
+    // Extract JSON even when the provider wraps it with extra text.
     try {
-      // 1. 先尝试直接解析
+      // 1. Try direct parsing first.
       return JSON.parse(content);
     } catch (e) {
-      // 2. 如果直接解析失败，尝试寻找第一个 { 和最后一个 } 之间的内容
+      // 2. If direct parsing fails, parse the content between the first "{" and last "}".
       const firstBrace = content.indexOf('{');
       const lastBrace = content.lastIndexOf('}');
       if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
@@ -127,30 +127,30 @@ export async function analyzeImageWithAI(imagePath: string): Promise<any> {
         try {
           return JSON.parse(jsonStr);
         } catch (e2) {
-          console.error('AI分析：内容包含JSON标识但解析失败:', jsonStr);
+          console.error('AI analysis response contained JSON markers but failed to parse:', jsonStr);
         }
       }
-      console.error('AI分析：返回内容不是有效的JSON。原文如下:\n', content);
+      console.error('AI analysis returned invalid JSON. Raw content:\n', content);
       return null;
     }
   } catch (error: any) {
-    console.error('AI单图分析异常:', error.response?.data || error.message);
+    console.error('AI single-image analysis error:', error.response?.data || error.message);
     return null;
   }
 }
 
 /**
- * [高性能版] 并行化图片检索
+ * Parallel AI image retrieval.
  */
 export async function searchImagesWithAI(query: string, images: any[], uploadDir: string): Promise<number[]> {
   try {
     if (images.length === 0) return [];
 
-    // 文本搜索提前启动，作为并行降级
+    // Start text search early as the fallback path.
     const textSearchPromise = searchByTags(query, images);
 
     const imagesToProcess = images.slice(0, 20);
-    console.log(`AI并行搜索：查询 "${query}"，并行处理 ${imagesToProcess.length} 张图片...`);
+    console.log(`AI parallel search: query "${query}", processing ${imagesToProcess.length} images...`);
 
     const searchTasks = imagesToProcess.map(async (img) => {
       try {
@@ -164,7 +164,7 @@ export async function searchImagesWithAI(query: string, images: any[], uploadDir
           messages: [{
             role: 'user',
             content: [
-              { type: 'text', text: `这张图片里有 "${query}" 吗？只回答 YES 或 NO。` },
+              { type: 'text', text: `Does this image match "${query}"? Answer only YES or NO.` },
               { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}` } }
             ]
           }],
@@ -172,17 +172,17 @@ export async function searchImagesWithAI(query: string, images: any[], uploadDir
         }, 30000);
 
         if (response.status >= 400 || response.data?.error) {
-          console.error('AI检索单图失败:', {
+          console.error('AI single-image retrieval failed:', {
             id: img.id,
             status: response.status,
-            message: response.data?.error?.message || '未知错误'
+            message: response.data?.error?.message || 'Unknown error'
           });
           return { id: img.id, match: false };
         }
 
         const answer = response.data.choices?.[0]?.message?.content?.toUpperCase() || '';
         const isMatch = answer.includes('YES');
-        if (isMatch) console.log(`  - 图片 ${img.id} (${img.originalName}) 匹配成功`);
+        if (isMatch) console.log(`  - Image ${img.id} (${img.originalName}) matched.`);
         return { id: img.id, match: isMatch };
       } catch (e) {
         return { id: img.id, match: false };
@@ -193,14 +193,14 @@ export async function searchImagesWithAI(query: string, images: any[], uploadDir
     const matchedIds = results.filter(r => r.match).map(r => r.id);
 
     if (matchedIds.length === 0) {
-      console.log('视觉搜索无匹配，回退文本搜索...');
+      console.log('Vision search found no matches. Falling back to text search...');
       return await textSearchPromise;
     }
 
-    console.log(`AI并行搜索完成，共匹配 ${matchedIds.length} 张图`);
+    console.log(`AI parallel search completed with ${matchedIds.length} matches.`);
     return matchedIds;
   } catch (error: any) {
-    console.error('AI搜索全局异常:', error.response?.data || error.message);
+    console.error('AI search error:', error.response?.data || error.message);
     return await searchByTags(query, images);
   }
 }

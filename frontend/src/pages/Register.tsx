@@ -20,17 +20,17 @@ export default function Register() {
     setError('');
 
     if (username.length < 6) {
-      setError('用户名至少需要6个字符');
+      setError('Username must be at least 6 characters.');
       return;
     }
 
     if (password.length < 6) {
-      setError('密码至少需要6个字符');
+      setError('Password must be at least 6 characters.');
       return;
     }
 
     if (password !== confirmPassword) {
-      setError('两次输入的密码不一致');
+      setError('Passwords do not match.');
       return;
     }
 
@@ -39,7 +39,7 @@ export default function Register() {
       await register(username, email, password);
       navigate('/');
     } catch (err: any) {
-      setError(err.message || '注册失败');
+      setError(err.message || 'Registration failed.');
     } finally {
       setLoading(false);
     }
@@ -56,13 +56,13 @@ export default function Register() {
           className="w-full max-w-sm space-y-8"
         >
           <div className="space-y-4 text-center lg:text-left">
-            <h2 className="text-4xl font-serif">开启私有画廊</h2>
-            <p className="text-secondary font-light text-sm tracking-widest uppercase">请填写以下必要信息</p>
+            <h2 className="text-4xl font-serif">Create Your Gallery</h2>
+            <p className="text-secondary font-light text-sm tracking-widest uppercase">Complete the required details</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-3">
-              <label htmlFor="username" className="text-[10px] tracking-[0.2em] uppercase font-light text-secondary">用户名</label>
+              <label htmlFor="username" className="text-[10px] tracking-[0.2em] uppercase font-light text-secondary">Username</label>
               <input
                 type="text"
                 id="username"
@@ -77,7 +77,7 @@ export default function Register() {
             </div>
 
             <div className="space-y-3">
-              <label htmlFor="email" className="text-[10px] tracking-[0.2em] uppercase font-light text-secondary">电子邮箱</label>
+              <label htmlFor="email" className="text-[10px] tracking-[0.2em] uppercase font-light text-secondary">Email Address</label>
               <input
                 type="email"
                 id="email"
@@ -96,7 +96,7 @@ export default function Register() {
               required
               placeholder="••••••••"
               minLength={6}
-              label="访问密钥"
+              label="Password"
             />
 
             <PasswordInput
@@ -106,7 +106,7 @@ export default function Register() {
               required
               placeholder="••••••••"
               minLength={6}
-              label="确认密钥"
+              label="Confirm Password"
             />
 
             {error && (
@@ -124,13 +124,13 @@ export default function Register() {
               disabled={loading}
               className="w-full py-4 bg-foreground text-white rounded-2xl text-xs tracking-widest uppercase font-medium flex items-center justify-center gap-3 hover:bg-foreground/90 transition-all hover:gap-6 active:scale-95 disabled:opacity-50"
             >
-              <span>{loading ? '正在同步' : '立即激活'}</span>
+              <span>{loading ? 'Creating' : 'Activate Account'}</span>
               {!loading && <ArrowRight className="w-4 h-4" />}
             </button>
           </form>
 
           <p className="text-center text-xs text-secondary font-light tracking-widest uppercase py-4">
-            已有通行证？ <Link to="/login" className="text-foreground font-medium underline underline-offset-8">直接登录</Link>
+            Already have an account? <Link to="/login" className="text-foreground font-medium underline underline-offset-8">Log in</Link>
           </p>
         </motion.div>
       </div>
@@ -155,11 +155,11 @@ export default function Register() {
             <ImageIcon className="w-12 h-12 stroke-[1px]" />
           </div>
           <h1 className="text-6xl font-serif leading-tight tracking-tighter">
-            记录时光的 <br />
-            高级方式
+            Curate Moments <br />
+            With Intention
           </h1>
           <p className="text-lg font-light text-white/60 tracking-wide leading-relaxed">
-            加入我们，用最纯粹的方式整理您的视觉资产。
+            Organize your visual assets with a clean, focused workflow.
           </p>
         </div>
       </div>

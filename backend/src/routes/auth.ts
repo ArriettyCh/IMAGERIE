@@ -6,23 +6,23 @@ import { upload } from '../middleware/upload.js';
 
 export const authRouter = Router();
 
-// 注册
+// Register.
 authRouter.post('/register', validateRegister, register);
 
-// 登录
+// Log in.
 authRouter.post('/login', validateLogin, login);
 
-// 获取当前用户信息
+// Get the current user.
 authRouter.get('/me', authenticateToken, getCurrentUser);
 
-// 更新用户名
+// Update username.
 authRouter.patch('/username', authenticateToken, updateUsername);
 
-// 更新邮箱
+// Update email.
 authRouter.patch('/email', authenticateToken, updateEmail);
 
-// 更新密码
+// Update password.
 authRouter.patch('/password', authenticateToken, updatePassword);
 
-// 更新头像
+// Update avatar.
 authRouter.post('/avatar', authenticateToken, upload.single('avatar'), updateAvatar);

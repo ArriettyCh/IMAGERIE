@@ -21,7 +21,7 @@ export default function Login() {
       await login(email, password);
       navigate('/');
     } catch (err: any) {
-      setError(err.message || '凭据无效，请重新核对');
+      setError(err.message || 'Invalid credentials. Please check and try again.');
     } finally {
       setLoading(false);
     }
@@ -50,11 +50,11 @@ export default function Login() {
         <div className="relative z-10 text-white space-y-6 max-w-md">
           <ImageIcon className="w-12 h-12 stroke-[1px]" />
           <h1 className="text-5xl font-serif leading-tight tracking-tighter">
-            探索视觉的 <br />
-            无限可能
+            Explore Visual <br />
+            Possibilities
           </h1>
           <p className="text-lg font-light text-white tracking-wide leading-relaxed">
-            私有的图像典藏库，为您珍藏每一刻。
+            A private image archive for the moments worth keeping.
           </p>
         </div>
 
@@ -72,13 +72,13 @@ export default function Login() {
           className="w-full max-w-sm space-y-12"
         >
           <div className="space-y-4 text-center lg:text-left">
-            <h2 className="text-4xl font-serif">欢迎回来</h2>
-            <p className="text-secondary font-light text-sm tracking-widest uppercase">请输入您的通行证</p>
+            <h2 className="text-4xl font-serif">Welcome Back</h2>
+            <p className="text-secondary font-light text-sm tracking-widest uppercase">Enter your credentials</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-8">
             <div className="space-y-3">
-              <label htmlFor="email" className="text-[10px] tracking-[0.2em] uppercase font-light text-secondary">邮箱地址</label>
+              <label htmlFor="email" className="text-[10px] tracking-[0.2em] uppercase font-light text-secondary">Email Address</label>
               <input
                 type="email"
                 id="email"
@@ -97,7 +97,7 @@ export default function Login() {
               required
               placeholder="••••••••"
               minLength={6}
-              label="访问密钥"
+              label="Password"
             />
 
             {error && (
@@ -115,13 +115,13 @@ export default function Login() {
               disabled={loading}
               className="w-full py-4 bg-foreground text-white rounded-2xl text-xs tracking-widest uppercase font-medium flex items-center justify-center gap-3 hover:bg-foreground/90 transition-all hover:gap-6 active:scale-95 disabled:opacity-50"
             >
-              <span>{loading ? '正在验证' : '进入收藏'}</span>
+              <span>{loading ? 'Verifying' : 'Enter Gallery'}</span>
               {!loading && <ArrowRight className="w-4 h-4" />}
             </button>
           </form>
 
           <p className="text-center text-xs text-secondary font-light tracking-widest uppercase py-8">
-            尚未加入？ <Link to="/register" className="text-foreground font-medium underline underline-offset-8">申请新通行证</Link>
+            New here? <Link to="/register" className="text-foreground font-medium underline underline-offset-8">Create an account</Link>
           </p>
         </motion.div>
       </div>

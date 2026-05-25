@@ -157,7 +157,7 @@ export default function ImageEditor({ imageUrl, imageId, mode, onClose, onSave }
   const handleSave = async () => {
     if (!canvasRef.current) return;
 
-    // 如果在裁剪模式下且有选区，先应用裁剪
+    // Apply the selected crop before saving.
     if (mode === 'crop' && cropBox.width > 0) {
       applyCropInternal();
     }
@@ -178,10 +178,10 @@ export default function ImageEditor({ imageUrl, imageId, mode, onClose, onSave }
         }
       });
 
-      addToast('作品集已成功更新');
+      addToast('Collection updated.');
       onSave();
     } catch (err) {
-      addToast('同步编辑失败，请检查连接', 'error');
+      addToast('Unable to save edits. Please check the connection.', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -205,7 +205,7 @@ export default function ImageEditor({ imageUrl, imageId, mode, onClose, onSave }
           <button
             onClick={initCanvas}
             className="p-2 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-white transition-colors"
-            title="重置修改"
+            title="Reset edits"
           >
             <RotateCcw className="w-5 h-5" />
           </button>
@@ -215,7 +215,7 @@ export default function ImageEditor({ imageUrl, imageId, mode, onClose, onSave }
             className="px-8 py-2 bg-white text-black rounded-full text-xs tracking-widest uppercase font-medium hover:bg-white/90 transition-all flex items-center gap-2 disabled:opacity-50"
           >
             {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            <span>{isSaving ? '正在同步' : '完成并保存'}</span>
+            <span>{isSaving ? 'Saving' : 'Save Changes'}</span>
           </button>
         </div>
       </div>
@@ -227,7 +227,7 @@ export default function ImageEditor({ imageUrl, imageId, mode, onClose, onSave }
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
         >
-          {!imageLoaded && <div className="text-white/20 font-light tracking-widest animate-pulse">载入艺术画布中...</div>}
+          {!imageLoaded && <div className="text-white/20 font-light tracking-widest animate-pulse">Loading canvas...</div>}
           <canvas
             ref={canvasRef}
             className={`max-w-full max-h-[80vh] shadow-2xl transition-all duration-500 ${mode === 'crop' ? 'cursor-crosshair' : 'cursor-default'}`}
@@ -255,9 +255,9 @@ export default function ImageEditor({ imageUrl, imageId, mode, onClose, onSave }
 
       <div className="w-full md:w-80 bg-zinc-950 border-t md:border-t-0 md:border-l border-white/5 p-8 flex flex-col gap-12 overflow-y-auto">
         <div className="space-y-2">
-          <h2 className="text-white text-lg font-serif">{mode === 'crop' ? '重构构图' : '色彩实验室'}</h2>
+          <h2 className="text-white text-lg font-serif">{mode === 'crop' ? 'Crop Composition' : 'Color Lab'}</h2>
           <p className="text-white/40 text-[10px] tracking-widest uppercase">
-            {mode === 'crop' ? '直接拖动选区，随后点击保存即可' : '精细调整每一个光影维度'}
+            {mode === 'crop' ? 'Drag to select an area, then save.' : 'Fine-tune light and color.'}
           </p>
         </div>
 
@@ -265,21 +265,21 @@ export default function ImageEditor({ imageUrl, imageId, mode, onClose, onSave }
           <div className="space-y-8">
             <ControlSlider
               icon={Sun}
-              label="曝光度"
+              label="Exposure"
               value={adjustments.brightness}
               min={0} max={200}
               onChange={(val: number) => setAdjustments({ ...adjustments, brightness: val })}
             />
             <ControlSlider
               icon={Contrast}
-              label="对比度"
+              label="Contrast"
               value={adjustments.contrast}
               min={0} max={200}
               onChange={(val: number) => setAdjustments({ ...adjustments, contrast: val })}
             />
             <ControlSlider
               icon={Droplets}
-              label="色彩饱和度"
+              label="Saturation"
               value={adjustments.saturation}
               min={0} max={200}
               onChange={(val: number) => setAdjustments({ ...adjustments, saturation: val })}
@@ -290,7 +290,7 @@ export default function ImageEditor({ imageUrl, imageId, mode, onClose, onSave }
             <div className="p-6 bg-white/5 rounded-2xl border border-white/5 space-y-4">
               <Scissors className="w-5 h-5 text-white/40" />
               <p className="text-white/60 text-xs font-light leading-relaxed">
-                在画布上自由拖动以划定新的边界。选定后无需额外操作，点击右上角的“完成并保存”即可应用更改。
+                Drag across the canvas to define a new frame. After selecting an area, use Save Changes to apply it.
               </p>
             </div>
           </div>
@@ -299,10 +299,10 @@ export default function ImageEditor({ imageUrl, imageId, mode, onClose, onSave }
         <div className="mt-auto pt-8 border-t border-white/5 space-y-4">
           <div className="flex items-center gap-2 text-white/40">
             <Layers className="w-4 h-4" />
-            <span className="text-[10px] tracking-widest uppercase font-light">画布实时参数</span>
+            <span className="text-[10px] tracking-widest uppercase font-light">Live Canvas Data</span>
           </div>
           <div className="text-[10px] text-white/20 font-light grid grid-cols-2 gap-2 uppercase tracking-tighter">
-            <span>分辨率</span>
+            <span>Resolution</span>
             <span className="text-right text-white/40">{canvasRef.current?.width} × {canvasRef.current?.height}</span>
           </div>
         </div>

@@ -1,7 +1,7 @@
 {
   "name": "zju-bs-image-manager",
   "version": "1.0.0",
-  "description": "BS体系软件设计大程 - 图片管理网站",
+  "description": "AI-assisted private image management platform",
   "private": true,
   "workspaces": [
     "backend",

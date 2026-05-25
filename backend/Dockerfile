@@ -2,28 +2,28 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# 安装系统依赖（Prisma 需要 OpenSSL）
+# Install system dependencies required by Prisma.
 RUN apk add --no-cache openssl
 
-# 复制package文件
+# Copy package metadata.
 COPY package*.json ./
 COPY prisma ./prisma/
 
-# 安装依赖
+# Install dependencies.
 RUN npm install
 
-# 生成Prisma客户端
+# Generate the Prisma client.
 RUN npx prisma generate
 
-# 复制源代码
+# Copy source files.
 COPY . .
 
-# 构建
+# Build TypeScript output.
 RUN npm run build
 
-# 暴露端口
+# Expose the API port.
 EXPOSE 3001
 
-# 启动命令
+# Start the API server.
 CMD ["npm", "start"]
 

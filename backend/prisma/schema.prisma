@@ -1,4 +1,4 @@
-// Prisma数据库模型定义
+// Prisma database schema.
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,7 +8,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// 用户模型
+// User accounts.
 model User {
   id        Int      @id @default(autoincrement())
   username  String   @unique @db.VarChar(50)
@@ -23,7 +23,7 @@ model User {
   @@map("users")
 }
 
-// 图片模型（后续功能使用）
+// User-owned images and derived metadata.
 model Image {
   id          Int      @id @default(autoincrement())
   userId      Int

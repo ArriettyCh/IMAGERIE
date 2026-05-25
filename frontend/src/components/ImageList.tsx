@@ -52,7 +52,7 @@ export default function ImageList() {
         size: formatFileSize(Number(img.size))
       })));
     } catch (err: any) {
-      addToast('无法加载画廊，请稍后再试', 'error');
+      addToast('Unable to load gallery. Please try again later.', 'error');
     } finally {
       setLoading(false);
     }
@@ -85,7 +85,7 @@ export default function ImageList() {
 
   const handleAiSearch = async () => {
     if (!searchQuery.trim()) {
-      addToast('请输入搜索内容', 'info');
+      addToast('Please enter a search query.', 'info');
       return;
     }
 
@@ -103,10 +103,10 @@ export default function ImageList() {
           size: formatFileSize(Number(img.size))
         })));
         setIsAiSearchMode(true);
-        addToast(`AI 已为您找到 ${response.data.data.images.length} 张相关图片`);
+        addToast(`AI found ${response.data.data.images.length} matching images.`);
       }
     } catch (err: any) {
-      addToast('AI 搜索暂时不可用', 'error');
+      addToast('AI search is temporarily unavailable.', 'error');
     } finally {
       setIsSearching(false);
     }
@@ -115,9 +115,9 @@ export default function ImageList() {
   const handleDelete = async (id: number, e: React.MouseEvent) => {
     e.stopPropagation();
     showConfirm({
-      title: '删除确认',
-      message: '确定要从您的收藏中永久移除这张图片吗？此操作不可撤销。',
-      confirmLabel: '确认删除',
+      title: 'Confirm Deletion',
+      message: 'Are you sure you want to permanently remove this image from your collection? This action cannot be undone.',
+      confirmLabel: 'Delete',
       isDestructive: true,
       onConfirm: async () => {
         try {
@@ -130,9 +130,9 @@ export default function ImageList() {
             newSet.delete(id);
             return newSet;
           });
-          addToast('作品已成功移除');
+          addToast('Image removed.');
         } catch (err: any) {
-          addToast('操作失败，请重试', 'error');
+          addToast('Operation failed. Please try again.', 'error');
         }
       }
     });
@@ -156,12 +156,12 @@ export default function ImageList() {
           animate={{ opacity: 1, y: 0 }}
           className="flex items-center justify-center gap-4 mb-8"
         >
-          <span className="text-[10px] tracking-[0.2em] text-accent uppercase font-medium">当前为 AI 智能检索结果</span>
+          <span className="text-[10px] tracking-[0.2em] text-accent uppercase font-medium">Showing AI search results</span>
           <button
             onClick={() => { setSearchQuery(''); fetchImages(); }}
             className="text-[10px] tracking-[0.2em] text-secondary hover:text-foreground uppercase font-light underline underline-offset-4"
           >
-            显示全部
+            Show All
           </button>
         </motion.div>
       )}
@@ -176,20 +176,20 @@ export default function ImageList() {
             className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 glass px-6 py-4 rounded-3xl shadow-2xl flex items-center gap-6 border border-white/40"
           >
             <div className="text-sm font-medium pr-6 border-r border-foreground/10">
-              已选择 {selectedImages.size} 项
+              {selectedImages.size} Selected
             </div>
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setShowCarousel(true)}
                 className="flex items-center gap-2 text-sm hover:text-accent transition-colors"
               >
-                <Play className="w-4 h-4" /> 轮播
+                <Play className="w-4 h-4" /> Carousel
               </button>
               <button 
                 onClick={() => setSelectedImages(new Set())}
                 className="flex items-center gap-2 text-sm text-secondary hover:text-foreground transition-colors"
               >
-                取消
+                Cancel
               </button>
             </div>
           </motion.div>
@@ -205,7 +205,7 @@ export default function ImageList() {
         </div>
       ) : images.length === 0 ? (
         <div className="py-24 text-center">
-          <p className="text-secondary font-light tracking-widest uppercase text-xs">暂无发现匹配的作品</p>
+          <p className="text-secondary font-light tracking-widest uppercase text-xs">No matching images found</p>
         </div>
       ) : (
             <motion.div

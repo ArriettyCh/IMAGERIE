@@ -19,12 +19,12 @@ export default function ImageUpload({ onUploadSuccess }: ImageUploadProps) {
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      setError('请选择图片文件');
+      setError('Please select an image file.');
       return;
     }
 
     if (file.size > 10 * 1024 * 1024) {
-      setError('图片大小不能超过10MB');
+      setError('Image size must not exceed 10MB.');
       return;
     }
 
@@ -51,7 +51,7 @@ export default function ImageUpload({ onUploadSuccess }: ImageUploadProps) {
       }
     } catch (err: any) {
       const serverMsg = err.response?.data?.message;
-      setError(serverMsg && serverMsg.length <= 60 ? serverMsg : '上传失败，请稍后重试');
+      setError(serverMsg && serverMsg.length <= 60 ? serverMsg : 'Upload failed. Please try again later.');
     } finally {
       setUploading(false);
     }
@@ -77,12 +77,12 @@ export default function ImageUpload({ onUploadSuccess }: ImageUploadProps) {
         {uploading ? (
           <>
             <Loader2 className="w-4 h-4 animate-spin" />
-            <span>正在上传</span>
+            <span>Uploading</span>
           </>
         ) : (
           <>
             <Plus className="w-4 h-4" />
-            <span>添加作品</span>
+            <span>Add Image</span>
           </>
         )}
       </motion.label>

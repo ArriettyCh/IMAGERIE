@@ -6,32 +6,32 @@ import { upload } from '../middleware/upload.js';
 
 export const imageRouter = Router();
 
-// 所有图片路由都需要认证
+// All image routes require authentication.
 imageRouter.use(authenticateToken);
 
-// 上传图片
+// Upload image.
 imageRouter.post('/upload', upload.single('image'), uploadImage);
 
-// 覆盖/更新图片内容（编辑保存）
+// Replace image content after editing.
 imageRouter.post('/:id/edit', upload.single('image'), updateImageContent);
 
-// 获取图片列表
+// Get image list.
 imageRouter.get('/', getImages);
 
-// MCP接口：AI对话式检索图片
+// AI-assisted natural-language image retrieval.
 imageRouter.post('/search/ai', searchImagesByAI);
 
-// 地理编码（逆地理编码）- 必须在 /:id 之前
+// Reverse geocoding must be declared before /:id.
 imageRouter.get('/geocode/reverse', reverseGeocode);
 
-// 诊断高德地图API连接（用于排查问题）
+// Diagnose Amap API connectivity.
 imageRouter.get('/geocode/diagnose', diagnoseAmapAPI);
 
-// 更新图片标签
+// Update image tags.
 imageRouter.patch('/:id/tags', updateImageTags);
 
-// 获取单张图片信息
+// Get one image.
 imageRouter.get('/:id', getImage);
 
-// 删除图片
+// Delete image.
 imageRouter.delete('/:id', deleteImage);

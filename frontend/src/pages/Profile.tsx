@@ -36,7 +36,7 @@ export default function Profile() {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.data.success) {
-        addToast('账户信息已成功同步');
+        addToast('Account information updated.');
         if (type !== 'password') {
           setUser(response.data.data);
         } else {
@@ -46,7 +46,7 @@ export default function Profile() {
         }
       }
     } catch (err: any) {
-      addToast(err.response?.data?.message || '同步失败，请重试', 'error');
+      addToast(err.response?.data?.message || 'Update failed. Please try again.', 'error');
     } finally {
       setLoading(false);
     }
@@ -57,7 +57,7 @@ export default function Profile() {
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      addToast('请选择有效的图片文件', 'error');
+      addToast('Please select a valid image file.', 'error');
       return;
     }
 
@@ -74,10 +74,10 @@ export default function Profile() {
       });
       if (response.data.success) {
         setUser(response.data.data);
-        addToast('头像已更新');
+        addToast('Avatar updated.');
       }
     } catch (err: any) {
-      addToast('头像上传失败', 'error');
+      addToast('Avatar upload failed.', 'error');
     } finally {
       setUploadingAvatar(false);
     }
@@ -85,9 +85,9 @@ export default function Profile() {
 
   const handleLogout = () => {
     showConfirm({
-      title: '退出登录',
-      message: '确定要结束当前会话并退出吗？',
-      confirmLabel: '退出',
+      title: 'Log Out',
+      message: 'Are you sure you want to end the current session?',
+      confirmLabel: 'Log Out',
       isDestructive: true,
       onConfirm: () => {
         logout();
@@ -105,11 +105,11 @@ export default function Profile() {
       <div className="flex justify-between items-end border-b border-foreground/5 pb-8">
         <div className="space-y-2">
           <h2 className="text-[10px] tracking-[0.3em] font-light text-secondary uppercase">Preference & Security</h2>
-          <h1 className="text-4xl font-serif tracking-tight text-foreground">账户设置</h1>
+          <h1 className="text-4xl font-serif tracking-tight text-foreground">Account Settings</h1>
         </div>
         <button onClick={() => navigate('/')} className="flex items-center gap-2 text-secondary hover:text-foreground transition-colors group">
           <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
-          <span className="text-xs tracking-widest uppercase font-light">返回画廊</span>
+          <span className="text-xs tracking-widest uppercase font-light">Back to Gallery</span>
         </button>
       </div>
 
@@ -128,7 +128,7 @@ export default function Profile() {
 
             <label className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer flex flex-col items-center justify-center text-white gap-2 backdrop-blur-sm">
               <Camera className="w-6 h-6" />
-              <span className="text-[10px] tracking-widest uppercase">更换头像</span>
+              <span className="text-[10px] tracking-widest uppercase">Change Avatar</span>
               <input type="file" className="hidden" accept="image/*" onChange={handleAvatarUpload} disabled={uploadingAvatar} />
             </label>
 
@@ -150,7 +150,7 @@ export default function Profile() {
               className="flex items-center gap-2 text-red-500/60 hover:text-red-500 transition-colors text-[10px] tracking-[0.2em] uppercase font-light"
             >
               <LogOut className="w-3 h-3" />
-              <span>退出当前账户</span>
+              <span>Log Out</span>
             </button>
           </div>
         </div>
@@ -159,12 +159,12 @@ export default function Profile() {
           <section className="space-y-20">
             <ProfileFormSection 
               icon={User}
-              title="身份标识" 
-              description="更新您的用户名，这也会改变您在画廊中的署名。"
+              title="Identity" 
+              description="Update the username shown across your gallery."
               onSubmit={(e: FormEvent) => { e.preventDefault(); handleUpdate('username', { username }); }}
             >
               <div className="space-y-3">
-                <label className="text-[10px] tracking-[0.2em] uppercase font-light text-secondary">通行用户名</label>
+                <label className="text-[10px] tracking-[0.2em] uppercase font-light text-secondary">Username</label>
                 <input
                   type="text"
                   value={username}
@@ -178,18 +178,18 @@ export default function Profile() {
                 className="luxury-button flex items-center gap-2"
               >
                 {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-                <span>更新身份信息</span>
+                <span>Update Identity</span>
               </button>
             </ProfileFormSection>
 
             <ProfileFormSection 
               icon={Mail}
-              title="联系地址" 
-              description="用于登录验证和系统重要通知发送。"
+              title="Contact Address" 
+              description="Used for sign-in verification and important account messages."
               onSubmit={(e: FormEvent) => { e.preventDefault(); handleUpdate('email', { email }); }}
             >
               <div className="space-y-3">
-                <label className="text-[10px] tracking-[0.2em] uppercase font-light text-secondary">注册邮箱</label>
+                <label className="text-[10px] tracking-[0.2em] uppercase font-light text-secondary">Registered Email</label>
                 <input
                   type="email"
                   value={email}
@@ -203,18 +203,18 @@ export default function Profile() {
                 className="luxury-button flex items-center gap-2"
               >
                 {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-                <span>更新通信地址</span>
+                <span>Update Email</span>
               </button>
             </ProfileFormSection>
 
             <ProfileFormSection 
               icon={ShieldCheck}
-              title="安全防御" 
-              description="定期更换访问密钥。新密钥必须包含至少6位字符。"
+              title="Security" 
+              description="Update your password regularly. New passwords must contain at least 6 characters."
               onSubmit={(e: FormEvent) => {
                 e.preventDefault(); 
                 if (newPassword !== confirmPassword) {
-                  addToast('两次输入的密钥不一致', 'error');
+                  addToast('Passwords do not match.', 'error');
                   return;
                 }
                 handleUpdate('password', { currentPassword, newPassword }); 
@@ -225,22 +225,22 @@ export default function Profile() {
                   id="currentPassword"
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="当前使用的密钥"
-                  label="安全验证"
+                  placeholder="Current password"
+                  label="Security Check"
                 />
                 <PasswordInput
                   id="newPassword"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="请输入新密钥"
-                  label="设置新密钥"
+                  placeholder="Enter a new password"
+                  label="New Password"
                 />
                 <PasswordInput
                   id="confirmPassword"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="请再次验证新密钥"
-                  label="验证新密钥"
+                  placeholder="Confirm the new password"
+                  label="Confirm Password"
                 />
               </div>
               <button
@@ -249,7 +249,7 @@ export default function Profile() {
                 className="luxury-button flex items-center gap-2"
               >
                 {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-                <span>重置安全密钥</span>
+                <span>Reset Password</span>
               </button>
             </ProfileFormSection>
           </section>

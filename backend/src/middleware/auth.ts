@@ -16,7 +16,7 @@ export const authenticateToken = (
   if (!token) {
     return res.status(401).json({ 
       success: false,
-      message: '未提供认证令牌' 
+      message: 'Authentication token was not provided.' 
     });
   }
 
@@ -24,7 +24,7 @@ export const authenticateToken = (
   if (!jwtSecret) {
     return res.status(500).json({ 
       success: false,
-      message: '服务器配置错误' 
+      message: 'Server configuration error.' 
     });
   }
 
@@ -32,7 +32,7 @@ export const authenticateToken = (
     if (err) {
       return res.status(403).json({ 
         success: false,
-        message: '无效或过期的令牌' 
+        message: 'Invalid or expired token.' 
       });
     }
     

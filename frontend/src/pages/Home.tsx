@@ -32,10 +32,10 @@ export default function Home() {
               The Private Collection
             </h2>
             <h1 className="text-3xl font-serif tracking-tight text-foreground">
-              {user?.username} 的画廊
+              {user?.username}'s Gallery
             </h1>
             <p className="text-xs font-light text-secondary italic tracking-wide mt-2">
-              “摄影是在平庸的现实中，捕捉那稍纵即逝的诗意。”
+              "Photography catches a passing sense of poetry in everyday life."
             </p>
           </motion.div>
 

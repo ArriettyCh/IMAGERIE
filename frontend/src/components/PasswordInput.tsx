@@ -15,7 +15,7 @@ export default function PasswordInput({
   id,
   value,
   onChange,
-  placeholder = '请输入密码',
+  placeholder = 'Enter password',
   required = false,
   minLength,
   label
@@ -40,7 +40,7 @@ export default function PasswordInput({
           type="button"
           className="absolute right-4 top-1/2 -translate-y-1/2 text-secondary hover:text-foreground transition-colors p-2"
           onClick={() => setShowPassword(!showPassword)}
-          aria-label={showPassword ? '隐藏密码' : '显示密码'}
+          aria-label={showPassword ? 'Hide password' : 'Show password'}
         >
           {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
         </button>

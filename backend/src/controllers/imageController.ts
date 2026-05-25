@@ -7,20 +7,20 @@ import sharp from 'sharp';
 import exifr from 'exifr';
 import { analyzeImageWithAI, searchImagesWithAI } from '../utils/aiService.js';
 
-// 上传图片
+// Upload image.
 export const uploadImage = async (req: AuthRequest, res: Response) => {
   try {
     if (!req.file) {
       return res.status(400).json({
         success: false,
-        message: '请选择要上传的图片'
+        message: 'Please select an image to upload.'
       });
     }
 
     const userId = req.userId!;
     const file = req.file;
 
-    // 获取图片尺寸
+    // Read image dimensions.
     let width: number | null = null;
     let height: number | null = null;
     try {
@@ -28,32 +28,32 @@ export const uploadImage = async (req: AuthRequest, res: Response) => {
       width = metadata.width || null;
       height = metadata.height || null;
     } catch (error) {
-      console.error('获取图片尺寸失败:', error);
+      console.error('Failed to read image dimensions:', error);
     }
 
-    // 提取EXIF信息
+    // Extract EXIF metadata.
     let exifData = null;
     try {
       exifData = await exifr.parse(file.path, {
         pick: ['DateTimeOriginal', 'GPSLatitude', 'GPSLongitude', 'Make', 'Model', 'Orientation']
       });
     } catch (error) {
-      console.log('EXIF提取失败（可能图片没有EXIF信息）');
+      console.log('EXIF extraction failed, possibly because the image has no EXIF metadata.');
     }
 
-    // 生成缩略图
+    // Generate thumbnail.
     const thumbnailPath = path.join(path.dirname(file.path), 'thumbnails', file.filename);
     try {
       await sharp(file.path)
-        // 原300px效果较糊，提升到600px内短边，保证清晰度
+        // Keep thumbnail quality high enough for gallery previews.
         // .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
         .jpeg({ quality: 100 })
         .toFile(thumbnailPath);
     } catch (error) {
-      console.error('缩略图生成失败:', error);
+      console.error('Thumbnail generation failed:', error);
     }
    
-    // 1. 立即创建数据库记录
+    // 1. Create the database record immediately.
     const image = await prisma.image.create({
       data: {
         userId,
@@ -75,35 +75,35 @@ export const uploadImage = async (req: AuthRequest, res: Response) => {
       }
     });
 
-    // 2. 异步触发 AI 分析（不使用 await，直接在后台运行）
+    // 2. Trigger AI analysis in the background.
     analyzeImageWithAI(file.path)
       .then(async (aiTags) => {
         if (aiTags) {
-          console.log(`后台分析成功: 图片ID ${image.id}`);
+          console.log(`Background analysis succeeded for image ID ${image.id}.`);
           await prisma.image.update({
             where: { id: image.id },
             data: { aiTags: JSON.parse(JSON.stringify(aiTags)) }
           });
         }
       })
-      .catch(err => console.error(`后台分析异常: ${image.id}`, err.message));
+      .catch(err => console.error(`Background analysis failed for image ${image.id}:`, err.message));
 
-    // 3. 瞬间返回结果
+    // 3. Return the upload result without waiting for AI analysis.
     res.status(201).json({
       success: true,
-      message: '图片上传成功，AI分析正在后台进行',
+      message: 'Image uploaded successfully. AI analysis is running in the background.',
       data: image
     });
   } catch (error: any) {
-    console.error('上传错误:', error);
+    console.error('Upload error:', error);
     res.status(500).json({
       success: false,
-      message: '图片上传失败：' + error.message
+      message: 'Image upload failed: ' + error.message
     });
   }
 };
 
-// 获取图片列表
+// Get image list.
 export const getImages = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;
@@ -112,7 +112,7 @@ export const getImages = async (req: AuthRequest, res: Response) => {
     const search = req.query.search as string;
     const skip = (page - 1) * limit;
 
-    // 构建查询条件
+    // Build query conditions.
     const where: any = { userId };
     if (search) {
       where.OR = [
@@ -158,15 +158,15 @@ export const getImages = async (req: AuthRequest, res: Response) => {
       }
     });
   } catch (error: any) {
-    console.error('获取图片列表错误:', error);
+    console.error('Get image list error:', error);
     res.status(500).json({
       success: false,
-      message: '获取图片列表失败'
+      message: 'Failed to get image list.'
     });
   }
 };
 
-// 获取单张图片信息
+// Get one image.
 export const getImage = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;
@@ -182,7 +182,7 @@ export const getImage = async (req: AuthRequest, res: Response) => {
     if (!image) {
       return res.status(404).json({
         success: false,
-        message: '图片不存在'
+        message: 'Image does not exist.'
       });
     }
 
@@ -191,15 +191,15 @@ export const getImage = async (req: AuthRequest, res: Response) => {
       data: image
     });
   } catch (error: any) {
-    console.error('获取图片错误:', error);
+    console.error('Get image error:', error);
     res.status(500).json({
       success: false,
-      message: '获取图片失败'
+      message: 'Failed to get image.'
     });
   }
 };
 
-// 删除图片
+// Delete image.
 export const deleteImage = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;
@@ -215,11 +215,11 @@ export const deleteImage = async (req: AuthRequest, res: Response) => {
     if (!image) {
       return res.status(404).json({
         success: false,
-        message: '图片不存在'
+        message: 'Image does not exist.'
       });
     }
 
-    // 删除文件
+    // Delete image files.
     const uploadDir = process.env.UPLOAD_DIR || './uploads';
     const filePath = path.join(uploadDir, image.filename);
     const thumbnailPath = path.join(uploadDir, 'thumbnails', image.filename);
@@ -229,30 +229,30 @@ export const deleteImage = async (req: AuthRequest, res: Response) => {
         try {
           fs.unlinkSync(file);
         } catch (error) {
-          console.error('删除文件失败:', file, error);
+          console.error('Failed to delete file:', file, error);
         }
       }
     });
 
-    // 删除数据库记录
+    // Delete the database record.
     await prisma.image.delete({
       where: { id: imageId }
     });
 
     res.json({
       success: true,
-      message: '图片删除成功'
+      message: 'Image deleted successfully.'
     });
   } catch (error: any) {
-    console.error('删除图片错误:', error);
+    console.error('Delete image error:', error);
     res.status(500).json({
       success: false,
-      message: '删除图片失败'
+      message: 'Failed to delete image.'
     });
   }
 };
 
-// 更新图片标签
+// Update image tags.
 export const updateImageTags = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;
@@ -269,7 +269,7 @@ export const updateImageTags = async (req: AuthRequest, res: Response) => {
     if (!image) {
       return res.status(404).json({
         success: false,
-        message: '图片不存在'
+        message: 'Image does not exist.'
       });
     }
 
@@ -282,19 +282,19 @@ export const updateImageTags = async (req: AuthRequest, res: Response) => {
 
     res.json({
       success: true,
-      message: '标签更新成功',
+      message: 'Tags updated successfully.',
       data: updatedImage
     });
   } catch (error: any) {
-    console.error('更新标签错误:', error);
+    console.error('Update tags error:', error);
     res.status(500).json({
       success: false,
-      message: '更新标签失败'
+      message: 'Failed to update tags.'
     });
   }
 };
 
-// MCP接口：通过AI对话方式检索图片
+// Search images through AI-assisted natural-language retrieval.
 export const searchImagesByAI = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;
@@ -303,11 +303,11 @@ export const searchImagesByAI = async (req: AuthRequest, res: Response) => {
     if (!query || typeof query !== 'string' || query.trim().length === 0) {
       return res.status(400).json({
         success: false,
-        message: '请提供查询内容'
+        message: 'Please provide a search query.'
       });
     }
 
-    // 获取用户的所有图片（包含标签信息）
+    // Get all images owned by the user, including tag metadata.
     const allImages = await prisma.image.findMany({
       where: { userId },
       select: {
@@ -325,16 +325,16 @@ export const searchImagesByAI = async (req: AuthRequest, res: Response) => {
       }
     });
 
-    // 使用AI进行智能检索（需要传入上传目录路径）
+    // Run AI retrieval with the upload directory for image access.
     const uploadDir = process.env.UPLOAD_DIR || './uploads';
     const matchedImageIds = await searchImagesWithAI(query, allImages, uploadDir);
 
-    // 根据匹配的ID获取图片详情
+    // Return details for matched image IDs.
     const matchedImages = allImages.filter(img => matchedImageIds.includes(img.id));
 
     res.json({
       success: true,
-      message: '检索成功',
+      message: 'Search completed successfully.',
       data: {
         images: matchedImages,
         query: query,
@@ -342,16 +342,16 @@ export const searchImagesByAI = async (req: AuthRequest, res: Response) => {
       }
     });
   } catch (error: any) {
-    console.error('AI检索错误:', error);
+    console.error('AI retrieval error:', error);
     res.status(500).json({
       success: false,
-      message: 'AI检索失败：' + error.message
+      message: 'AI retrieval failed: ' + error.message
     });
   }
 };
 
 
-// 更新图片内容（编辑后保存）
+// Update image content after editing.
 export const updateImageContent = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;
@@ -359,7 +359,7 @@ export const updateImageContent = async (req: AuthRequest, res: Response) => {
     const file = req.file;
 
     if (!file) {
-      return res.status(400).json({ success: false, message: '未收到图片数据' });
+      return res.status(400).json({ success: false, message: 'No image data received.' });
     }
 
     const image = await prisma.image.findFirst({
@@ -367,17 +367,17 @@ export const updateImageContent = async (req: AuthRequest, res: Response) => {
     });
 
     if (!image) {
-      return res.status(404).json({ success: false, message: '图片不存在' });
+      return res.status(404).json({ success: false, message: 'Image does not exist.' });
     }
 
-    // 更新文件：将新上传的临时文件移动/覆盖原文件
+    // Replace the original file with the uploaded temporary file.
     const uploadDir = process.env.UPLOAD_DIR || './uploads';
     const oldPath = path.join(uploadDir, image.filename);
 
-    // 生成新的缩略图
+    // Generate a new thumbnail.
     const thumbnailPath = path.join(uploadDir, 'thumbnails', image.filename);
 
-    // 确保缩略图目录存在
+    // Ensure the thumbnail directory exists.
     const thumbDir = path.dirname(thumbnailPath);
     if (!fs.existsSync(thumbDir)) {
       fs.mkdirSync(thumbDir, { recursive: true });
@@ -387,11 +387,11 @@ export const updateImageContent = async (req: AuthRequest, res: Response) => {
       .resize(300, 300, { fit: 'inside', withoutEnlargement: true })
       .toFile(thumbnailPath);
 
-    // 覆盖原图
+    // Replace the original image.
     fs.copyFileSync(file.path, oldPath);
-    fs.unlinkSync(file.path); // 删除临时文件
+    fs.unlinkSync(file.path); // Delete temporary file.
 
-    // 更新尺寸信息
+    // Update image dimensions and size.
     const metadata = await sharp(oldPath).metadata();
     await prisma.image.update({
       where: { id: imageId },
@@ -403,7 +403,7 @@ export const updateImageContent = async (req: AuthRequest, res: Response) => {
       }
     });
 
-    // 异步重新触发 AI 分析
+    // Refresh AI analysis in the background.
     analyzeImageWithAI(oldPath).then(async (aiTags) => {
       if (aiTags) {
         await prisma.image.update({
@@ -415,10 +415,10 @@ export const updateImageContent = async (req: AuthRequest, res: Response) => {
 
     res.json({
       success: true,
-      message: '图片编辑已成功保存'
+      message: 'Image edits saved successfully.'
     });
   } catch (error: any) {
-    console.error('更新图片内容失败:', error);
-    res.status(500).json({ success: false, message: '保存编辑失败' });
+    console.error('Update image content error:', error);
+    res.status(500).json({ success: false, message: 'Failed to save image edits.' });
   }
 };

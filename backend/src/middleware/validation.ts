@@ -5,19 +5,19 @@ export const validateRegister = [
   body('username')
     .trim()
     .isLength({ min: 6 })
-    .withMessage('用户名至少需要6个字符')
+    .withMessage('Username must be at least 6 characters.')
     .matches(/^[a-zA-Z0-9_]+$/)
-    .withMessage('用户名只能包含字母、数字和下划线'),
+    .withMessage('Username can only contain letters, numbers, and underscores.'),
   
   body('email')
     .trim()
     .isEmail()
-    .withMessage('请输入有效的邮箱地址')
+    .withMessage('Please enter a valid email address.')
     .normalizeEmail(),
   
   body('password')
     .isLength({ min: 6 })
-    .withMessage('密码至少需要6个字符'),
+    .withMessage('Password must be at least 6 characters.'),
   
   (req: Request, res: Response, next: NextFunction) => {
     const errors = validationResult(req);
@@ -35,12 +35,12 @@ export const validateLogin = [
   body('email')
     .trim()
     .isEmail()
-    .withMessage('请输入有效的邮箱地址')
+    .withMessage('Please enter a valid email address.')
     .normalizeEmail(),
   
   body('password')
     .notEmpty()
-    .withMessage('密码不能为空'),
+    .withMessage('Password is required.'),
   
   (req: Request, res: Response, next: NextFunction) => {
     const errors = validationResult(req);

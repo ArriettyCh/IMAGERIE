@@ -62,7 +62,7 @@ export function CustomUI() {
                     }}
                     className="flex-1 py-3 text-xs tracking-widest uppercase font-light text-secondary hover:text-foreground transition-colors"
                   >
-                    {dialog.cancelLabel || '取消'}
+                    {dialog.cancelLabel || 'Cancel'}
                   </button>
                   <button
                     onClick={() => {
@@ -75,7 +75,7 @@ export function CustomUI() {
                         : 'bg-foreground text-white hover:bg-foreground/90'
                     }`}
                   >
-                    {dialog.confirmLabel || '确定'}
+                    {dialog.confirmLabel || 'Confirm'}
                   </button>
                 </div>
               </div>

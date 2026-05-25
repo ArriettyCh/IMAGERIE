@@ -40,10 +40,10 @@ export default function TagModal({ imageId, currentTags, onClose, onSave }: TagM
         { customTags: normalizedTags || null },
         { headers: { 'Authorization': `Bearer ${token}` } }
       );
-      addToast('标签已更新');
+      addToast('Tags updated.');
       onSave();
     } catch (error: any) {
-      addToast('保存失败，请稍后再试', 'error');
+      addToast('Save failed. Please try again later.', 'error');
     } finally {
       setLoading(false);
     }
@@ -70,7 +70,7 @@ export default function TagModal({ imageId, currentTags, onClose, onSave }: TagM
               <div className="p-2 bg-accent/10 rounded-xl text-accent">
                 <Tag className="w-5 h-5" />
               </div>
-              <h3 className="text-xl font-serif">自定义分类标签</h3>
+              <h3 className="text-xl font-serif">Custom Tags</h3>
             </div>
             <button onClick={onClose} className="p-2 hover:bg-black/5 rounded-full transition-colors text-secondary">
               <X className="w-5 h-5" />
@@ -78,17 +78,17 @@ export default function TagModal({ imageId, currentTags, onClose, onSave }: TagM
           </div>
 
           <div className="space-y-3">
-            <label className="text-[10px] tracking-[0.2em] uppercase font-light text-secondary">分类关键词</label>
+            <label className="text-[10px] tracking-[0.2em] uppercase font-light text-secondary">Tag Keywords</label>
             <textarea
               autoFocus
               value={tags}
               onChange={(e) => setTags(e.target.value)}
-              placeholder="例如：旅行, 建筑, 胶片感... (支持中英文逗号或换行分隔)"
+              placeholder="Example: travel, architecture, film look... Use commas or new lines."
               rows={4}
               className="w-full p-5 bg-card border-none rounded-2xl text-sm font-light focus:ring-1 focus:ring-foreground/10 transition-all outline-none resize-none"
             />
             <p className="text-[10px] text-secondary font-light italic leading-relaxed">
-              * 使用中/英文逗号或回车键分隔多个标签。
+              * Separate multiple tags with commas or line breaks.
             </p>
           </div>
 
@@ -97,7 +97,7 @@ export default function TagModal({ imageId, currentTags, onClose, onSave }: TagM
               onClick={onClose}
               className="flex-1 py-4 text-xs tracking-widest uppercase font-light text-secondary hover:text-foreground transition-colors"
             >
-              放弃更改
+              Discard
             </button>
             <button
               onClick={handleSave}
@@ -105,7 +105,7 @@ export default function TagModal({ imageId, currentTags, onClose, onSave }: TagM
               className="flex-1 py-4 bg-foreground text-white rounded-2xl text-xs tracking-widest uppercase font-medium flex items-center justify-center gap-3 hover:bg-foreground/90 transition-all disabled:opacity-50"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              <span>更新作品集</span>
+              <span>Update Collection</span>
             </button>
           </div>
         </div>

@@ -3,7 +3,7 @@ import path from 'path';
 import { Request } from 'express';
 import fs from 'fs';
 
-// 确保上传目录存在
+// Ensure upload directories exist.
 const uploadDir = process.env.UPLOAD_DIR || './uploads';
 const thumbnailDir = path.join(uploadDir, 'thumbnails');
 
@@ -13,13 +13,13 @@ const thumbnailDir = path.join(uploadDir, 'thumbnails');
   }
 });
 
-// 配置存储
+// Configure storage.
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
-    // 生成唯一文件名：时间戳-随机数-原文件名
+    // Generate a unique filename with timestamp and random suffix.
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     const ext = path.extname(file.originalname);
     const name = path.basename(file.originalname, ext);
@@ -27,13 +27,13 @@ const storage = multer.diskStorage({
   }
 });
 
-// 文件过滤器：只允许图片
+// File filter: only allow images.
 const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
   const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
   if (allowedMimes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error('只允许上传图片文件（JPEG, PNG, GIF, WebP）'));
+    cb(new Error('Only image files are allowed (JPEG, PNG, GIF, WebP).'));
   }
 };
 
@@ -41,7 +41,7 @@ export const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: parseInt(process.env.MAX_FILE_SIZE || '10485760'), // 默认10MB
+    fileSize: parseInt(process.env.MAX_FILE_SIZE || '10485760'), // Default: 10MB
   }
 });
 

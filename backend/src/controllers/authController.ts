@@ -6,12 +6,12 @@ import { AuthRequest } from '../middleware/auth.js';
 import path from 'path';
 import fs from 'fs';
 
-// 注册
+// Register.
 export const register = async (req: Request, res: Response) => {
   try {
     const { username, email, password } = req.body;
 
-    // 检查用户名是否已存在
+    // Check whether the username or email already exists.
     const existingUser = await prisma.user.findFirst({
       where: {
         OR: [
@@ -25,15 +25,15 @@ export const register = async (req: Request, res: Response) => {
       return res.status(400).json({
         success: false,
         message: existingUser.username === username 
-          ? '用户名已存在' 
-          : '邮箱已被注册'
+          ? 'Username already exists.' 
+          : 'Email is already registered.'
       });
     }
 
-    // 加密密码
+    // Hash the password.
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 创建用户
+    // Create the user.
     const user = await prisma.user.create({
       data: {
         username,
@@ -49,7 +49,7 @@ export const register = async (req: Request, res: Response) => {
       }
     });
 
-    // 生成JWT令牌
+    // Generate a JWT token.
     const jwtSecret = process.env.JWT_SECRET || 'fallback-secret';
     const token = jwt.sign(
       { userId: user.id, email: user.email },
@@ -59,27 +59,27 @@ export const register = async (req: Request, res: Response) => {
 
     res.status(201).json({
       success: true,
-      message: '注册成功',
+      message: 'Registration successful.',
       data: {
         user,
         token
       }
     });
   } catch (error: any) {
-    console.error('注册错误:', error);
+    console.error('Registration error:', error);
     res.status(500).json({
       success: false,
-      message: '注册失败，请稍后重试'
+      message: 'Registration failed. Please try again later.'
     });
   }
 };
 
-// 登录
+// Log in.
 export const login = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
 
-    // 查找用户
+    // Find the user.
     const user = await prisma.user.findUnique({
       where: { email }
     });
@@ -87,20 +87,20 @@ export const login = async (req: Request, res: Response) => {
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: '邮箱或密码错误'
+        message: 'Invalid email or password.'
       });
     }
 
-    // 验证密码
+    // Verify password.
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
       return res.status(401).json({
         success: false,
-        message: '邮箱或密码错误'
+        message: 'Invalid email or password.'
       });
     }
 
-    // 生成JWT令牌
+    // Generate a JWT token.
     const jwtSecret = process.env.JWT_SECRET || 'fallback-secret';
     const token = jwt.sign(
       { userId: user.id, email: user.email },
@@ -110,7 +110,7 @@ export const login = async (req: Request, res: Response) => {
 
     res.json({
       success: true,
-      message: '登录成功',
+      message: 'Login successful.',
       data: {
         user: {
           id: user.id,
@@ -123,15 +123,15 @@ export const login = async (req: Request, res: Response) => {
       }
     });
   } catch (error: any) {
-    console.error('登录错误:', error);
+    console.error('Login error:', error);
     res.status(500).json({
       success: false,
-      message: '登录失败，请稍后重试'
+      message: 'Login failed. Please try again later.'
     });
   }
 };
 
-// 获取当前用户信息
+// Get current user.
 export const getCurrentUser = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;
@@ -151,7 +151,7 @@ export const getCurrentUser = async (req: AuthRequest, res: Response) => {
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: '用户不存在'
+        message: 'User does not exist.'
       });
     }
 
@@ -160,15 +160,15 @@ export const getCurrentUser = async (req: AuthRequest, res: Response) => {
       data: user
     });
   } catch (error: any) {
-    console.error('获取用户信息错误:', error);
+    console.error('Get current user error:', error);
     res.status(500).json({
       success: false,
-      message: '获取用户信息失败'
+      message: 'Failed to get user information.'
     });
   }
 };
 
-// 更新用户名
+// Update username.
 export const updateUsername = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;
@@ -177,11 +177,11 @@ export const updateUsername = async (req: AuthRequest, res: Response) => {
     if (!username || username.length < 6) {
       return res.status(400).json({
         success: false,
-        message: '用户名至少需要6个字符'
+        message: 'Username must be at least 6 characters.'
       });
     }
 
-    // 检查用户名是否已被其他用户使用
+    // Check whether the username is used by another user.
     const existingUser = await prisma.user.findFirst({
       where: {
         username,
@@ -192,7 +192,7 @@ export const updateUsername = async (req: AuthRequest, res: Response) => {
     if (existingUser) {
       return res.status(400).json({
         success: false,
-        message: '用户名已被使用'
+        message: 'Username is already in use.'
       });
     }
 
@@ -211,19 +211,19 @@ export const updateUsername = async (req: AuthRequest, res: Response) => {
 
     res.json({
       success: true,
-      message: '用户名更新成功',
+      message: 'Username updated successfully.',
       data: user
     });
   } catch (error: any) {
-    console.error('更新用户名错误:', error);
+    console.error('Update username error:', error);
     res.status(500).json({
       success: false,
-      message: '更新用户名失败'
+      message: 'Failed to update username.'
     });
   }
 };
 
-// 更新邮箱
+// Update email.
 export const updateEmail = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;
@@ -232,11 +232,11 @@ export const updateEmail = async (req: AuthRequest, res: Response) => {
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({
         success: false,
-        message: '邮箱格式无效'
+        message: 'Invalid email format.'
       });
     }
 
-    // 检查邮箱是否已被其他用户使用
+    // Check whether the email is used by another user.
     const existingUser = await prisma.user.findFirst({
       where: {
         email,
@@ -247,7 +247,7 @@ export const updateEmail = async (req: AuthRequest, res: Response) => {
     if (existingUser) {
       return res.status(400).json({
         success: false,
-        message: '邮箱已被使用'
+        message: 'Email is already in use.'
       });
     }
 
@@ -266,19 +266,19 @@ export const updateEmail = async (req: AuthRequest, res: Response) => {
 
     res.json({
       success: true,
-      message: '邮箱更新成功',
+      message: 'Email updated successfully.',
       data: user
     });
   } catch (error: any) {
-    console.error('更新邮箱错误:', error);
+    console.error('Update email error:', error);
     res.status(500).json({
       success: false,
-      message: '更新邮箱失败'
+      message: 'Failed to update email.'
     });
   }
 };
 
-// 更新密码
+// Update password.
 export const updatePassword = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;
@@ -287,18 +287,18 @@ export const updatePassword = async (req: AuthRequest, res: Response) => {
     if (!currentPassword || !newPassword) {
       return res.status(400).json({
         success: false,
-        message: '请提供当前密码和新密码'
+        message: 'Please provide the current password and new password.'
       });
     }
 
     if (newPassword.length < 6) {
       return res.status(400).json({
         success: false,
-        message: '新密码至少需要6个字符'
+        message: 'New password must be at least 6 characters.'
       });
     }
 
-    // 获取用户并验证当前密码
+    // Get the user and verify the current password.
     const user = await prisma.user.findUnique({
       where: { id: userId }
     });
@@ -306,7 +306,7 @@ export const updatePassword = async (req: AuthRequest, res: Response) => {
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: '用户不存在'
+        message: 'User does not exist.'
       });
     }
 
@@ -314,11 +314,11 @@ export const updatePassword = async (req: AuthRequest, res: Response) => {
     if (!isValidPassword) {
       return res.status(401).json({
         success: false,
-        message: '当前密码错误'
+        message: 'Current password is incorrect.'
       });
     }
 
-    // 加密新密码
+    // Hash the new password.
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
     await prisma.user.update({
@@ -328,18 +328,18 @@ export const updatePassword = async (req: AuthRequest, res: Response) => {
 
     res.json({
       success: true,
-      message: '密码更新成功'
+      message: 'Password updated successfully.'
     });
   } catch (error: any) {
-    console.error('更新密码错误:', error);
+    console.error('Update password error:', error);
     res.status(500).json({
       success: false,
-      message: '更新密码失败'
+      message: 'Failed to update password.'
     });
   }
 };
 
-// 更新头像
+// Update avatar.
 export const updateAvatar = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;
@@ -348,22 +348,22 @@ export const updateAvatar = async (req: AuthRequest, res: Response) => {
     if (!file) {
       return res.status(400).json({
         success: false,
-        message: '未选择头像文件'
+        message: 'No avatar file selected.'
       });
     }
 
-    // 确保头像存放目录存在
+    // Ensure the avatar directory exists.
     const uploadDir = process.env.UPLOAD_DIR || './uploads';
     const avatarsDir = path.join(uploadDir, 'avatars');
     if (!fs.existsSync(avatarsDir)) {
       fs.mkdirSync(avatarsDir, { recursive: true });
     }
 
-    // 将上传的文件移动到 avatars 目录
+    // Move the uploaded file into the avatars directory.
     const newPath = path.join(avatarsDir, file.filename);
     fs.renameSync(file.path, newPath);
 
-    // 更新用户头像
+    // Update user avatar.
     const user = await prisma.user.update({
       where: { id: userId },
       data: { avatar: file.filename },
@@ -379,14 +379,14 @@ export const updateAvatar = async (req: AuthRequest, res: Response) => {
 
     res.json({
       success: true,
-      message: '头像更新成功',
+      message: 'Avatar updated successfully.',
       data: user
     });
   } catch (error: any) {
-    console.error('更新头像错误:', error);
+    console.error('Update avatar error:', error);
     res.status(500).json({
       success: false,
-      message: '更新头像失败'
+      message: 'Failed to update avatar.'
     });
   }
 };

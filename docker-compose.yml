@@ -8,7 +8,7 @@ services:
       MYSQL_USER: appuser
       MYSQL_PASSWORD: apppassword
     ports:
-      - "3307:3306"  # 外部端口改为3307，避免与本地MySQL冲突
+      - "3307:3306"  # Use 3307 locally to avoid conflicts with a host MySQL service.
     volumes:
       - mysql_data:/var/lib/mysql
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
