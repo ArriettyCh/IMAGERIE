@@ -1,57 +1,40 @@
 # IMAGERIE
 
-IMAGERIE is an AI-assisted image management platform for people who want a private, searchable, and editable visual library. It combines gallery organization, metadata extraction, AI-generated descriptions, natural-language search, lightweight editing, and account management in one full-stack web application.
+IMAGERIE is an AI-assisted image management platform for building a private, searchable, and editable visual library. It helps users preserve image collections with structured metadata, AI-generated descriptions, natural-language retrieval, lightweight editing, and account-level privacy.
 
 This project was originally built as a university full-stack software design project and has been packaged as a portfolio-ready selected project with reproducible local deployment, documented environment variables, and a concise open-source workflow.
 
-## Product Preview
+## Product Overview
 
-The product experience is designed around a focused workflow: upload visual assets, organize them with metadata and tags, retrieve them through search, and make lightweight edits without leaving the gallery.
+The product is designed around a simple workflow: collect images, understand what they contain, find them again through search, and make quick edits without leaving the gallery.
 
-### Gallery And Upload
-
-<p>
-  <img src="images/%E4%B8%BB%E9%A1%B5.png" alt="Home gallery" width="49%" />
-  <img src="images/%E4%B8%8A%E4%BC%A0.png" alt="Upload flow" width="49%" />
+<p align="center">
+  <img src="images/%E4%B8%BB%E9%A1%B5.png" alt="IMAGERIE home gallery" width="60%" />
 </p>
 
-### Search And Discovery
+Unlike a folder-based image archive, IMAGERIE treats each image as a searchable asset. Every upload can carry technical metadata, visual context, custom tags, and AI-derived descriptions, making the gallery useful for both browsing and retrieval.
 
-<p>
-  <img src="images/AI%E6%90%9C%E7%B4%A2.png" alt="AI search" width="49%" />
-  <img src="images/%E6%99%AE%E9%80%9A%E6%90%9C%E7%B4%A2.png" alt="Standard search" width="49%" />
+<p align="center">
+  <img src="images/AI%E6%90%9C%E7%B4%A2.png" alt="AI search" width="48%" />
+  <img src="images/%E5%A4%A7%E5%9B%BE.png" alt="Image detail" width="48%" />
 </p>
 
-### Metadata And Organization
+The interface supports keyword search for known labels and AI-assisted natural-language search for exploratory queries. Detail pages combine the original image, EXIF information, location context when available, AI summaries, and editable user tags.
 
-<p>
-  <img src="images/%E5%A4%A7%E5%9B%BE.png" alt="Image detail" width="49%" />
-  <img src="images/%E6%A0%87%E7%AD%BE.png" alt="Tag management" width="49%" />
+For quick post-processing, the built-in editor covers common crop and color adjustments so users can refine an image before returning it to the collection.
+
+<p align="center">
+  <img src="images/%E8%B0%83%E8%89%B2.png" alt="Color editor" width="60%" />
 </p>
 
-### Editing Workspace
+## Key Capabilities
 
-<p>
-  <img src="images/%E8%A3%81%E5%89%AA.png" alt="Crop editor" width="49%" />
-  <img src="images/%E8%B0%83%E8%89%B2.png" alt="Color editor" width="49%" />
-</p>
-
-### Presentation And Settings
-
-<p>
-  <img src="images/%E8%BD%AE%E6%92%AD.png" alt="Carousel view" width="49%" />
-  <img src="images/%E7%94%A8%E6%88%B7%E8%AE%BE%E7%BD%AE.png" alt="User settings" width="49%" />
-</p>
-
-## What It Does
-
-- Stores personal images in a private authenticated gallery.
-- Extracts core image metadata, including size, dimensions, EXIF data, and GPS-related information when available.
-- Uses AI vision analysis to generate categories, tags, descriptions, objects, and scene summaries.
-- Supports keyword search and AI-assisted natural-language search across the image collection.
-- Provides custom tags, image detail views, deletion flows, and a carousel presentation mode.
-- Includes browser-based crop and color adjustments for quick visual edits.
-- Offers profile management, avatar upload, email update, password update, and JWT-based authentication.
+- Private authenticated gallery with JWT-based account sessions.
+- Image upload, thumbnail generation, deletion, carousel viewing, and profile management.
+- EXIF extraction for dimensions, camera metadata, timestamps, and GPS-related data when available.
+- AI vision analysis for categories, tags, scene summaries, objects, and natural-language search.
+- Custom tags and detail pages for user-controlled organization.
+- Browser-based crop and color adjustment for lightweight editing.
 
 ## Tech Stack
 
